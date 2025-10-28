@@ -360,7 +360,7 @@ export function JiraLogger() {
             <Textarea
               value={worklogText}
               onChange={(e) => setWorklogText(e.target.value)}
-              placeholder="16-10-2025 Thursday&#10;    MOL-1099: discussion with Mounir and looked into logs: 1h&#10;    MXT-5573 (Internal meeting): Madhusheree assisted with using VSCode: 1h 30m"
+              placeholder="16-10-2025 Thursday&#10;    PROJ-123: Feature development and testing: 2h 30m&#10;    TEAM-456 (Team Meeting): Daily stand-up and planning: 15m&#10;    BUG-789: Investigated and fixed a critical bug: 1h"
               rows={8}
               className="text-base"
             />
