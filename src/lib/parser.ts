@@ -1,3 +1,11 @@
+/**
+ * @file parser.ts
+ * @description This file contains utility functions for parsing worklog text,
+ * converting time strings to minutes, and formatting minutes back to time strings.
+ * It is crucial for interpreting the user's raw text input into structured data
+ * that the application can use.
+ */
+
 import { WorklogEntry } from "@/types";
 import { addMinutes, setHours, setMinutes, setSeconds, parse as parseDate, format } from "date-fns";
 

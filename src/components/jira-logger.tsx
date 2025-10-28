@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * @file jira-logger.tsx
+ * @description This file contains the main component for the JiraLogger application.
+ * It allows users to parse worklog text, edit entries, and log them to Jira.
+ * It includes features like tabbing by date, undo/redo functionality, and direct API interaction with Jira.
+ */
+
 import { useState, useRef, useMemo, Fragment, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { formatMinutesToTime, parseWorklog, parseTime, timeStringToMinutes, regenerateWorklogText } from "@/lib/parser";
