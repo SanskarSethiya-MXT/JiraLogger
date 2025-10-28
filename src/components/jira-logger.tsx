@@ -527,13 +527,13 @@ Total: 1h 30m`}
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-[40px]"></TableHead>
-                          <TableHead className="w-[120px]">Date</TableHead>
-                          <TableHead className="w-[120px]">Start Time</TableHead>
-                          <TableHead className="w-[120px]">End Time</TableHead>
-                          <TableHead className="w-[150px]">Ticket</TableHead>
+                          <TableHead className="w-[100px]">Date</TableHead>
+                          <TableHead className="w-[100px]">Start Time</TableHead>
+                          <TableHead className="w-[100px]">End Time</TableHead>
+                          <TableHead className="w-[120px]">Ticket</TableHead>
                           <TableHead>Description</TableHead>
-                          <TableHead className="text-right w-[100px]">Time</TableHead>
-                          <TableHead className="text-right w-[120px]">Actions</TableHead>
+                          <TableHead className="text-right w-[80px]">Time</TableHead>
+                          <TableHead className="text-right w-[100px]">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -581,7 +581,7 @@ Total: 1h 30m`}
                       </TableBody>
                       <UiTableFooter>
                         <TableRow>
-                          <TableCell colSpan={7} className="font-bold">Total:</TableCell>
+                          <TableCell colSpan={6} className="font-bold">Total:</TableCell>
                           <TableCell className="text-right font-bold">{formatMinutesToTime(group.totalMinutes)}</TableCell>
                           <TableCell className="text-right">
                             <Button onClick={() => handleLogWork(group.entries, date)} disabled={isLogging} size="sm">
@@ -683,3 +683,5 @@ Total: 1h 30m`}
     </>
   );
 }
+
+    
