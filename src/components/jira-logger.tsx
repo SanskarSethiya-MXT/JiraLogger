@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { formatMinutesToTime, parseWorklog } from "@/lib/parser";
 import type { WorklogEntry, JiraSettings } from "@/types";
@@ -18,6 +18,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter as UiTableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -116,6 +117,18 @@ export function JiraLogger() {
       console.error(error);
     }
   };
+  
+  const groupedEntries = useMemo(() => {
+    return entries.reduce((acc, entry) => {
+      const dateKey = entry.startTime ? format(entry.startTime, "dd-MM-yyyy") : 'Invalid Date';
+      if (!acc[dateKey]) {
+        acc[dateKey] = { entries: [], totalMinutes: 0 };
+      }
+      acc[dateKey].entries.push(entry);
+      acc[dateKey].totalMinutes += entry.timeSpentInMinutes;
+      return acc;
+    }, {} as Record<string, { entries: EntryWithStatus[], totalMinutes: number }>);
+  }, [entries]);
 
   const totalMinutes = entries.reduce(
     (sum, entry) => sum + entry.timeSpentInMinutes,
@@ -139,14 +152,42 @@ export function JiraLogger() {
   const onEditSubmit = (values: z.infer<typeof editFormSchema>) => {
     if (!editingEntry) return;
     
-    const textForReparsing = entries.map((e) => {
-        if (e.id === editingEntry.id) {
-            return `${values.ticket}: ${values.description} ${values.timeSpent}`;
-        }
-        return `${e.ticket}: ${e.description} ${formatMinutesToTime(e.timeSpentInMinutes)}`;
-    }).join('\n');
+    // Create a new text block to re-parse. We need to find which line corresponds to the entry.
+    // This is a bit brittle but should work for most cases.
+    const textLines = worklogText.split('\n');
+    const entryDate = editingEntry.startTime ? format(editingEntry.startTime, 'dd-MM-yyyy') : null;
+    let found = false;
 
-    handleParse(textForReparsing);
+    const newText = textLines.map(line => {
+      // Very simplified check, might not be robust enough for complex logs
+      if (!found && line.includes(editingEntry.ticket) && line.includes(editingEntry.description.substring(0, 10))) {
+        found = true;
+        // Reconstruct the line based on the date context.
+        const dateLineRegex = /^\d{2}-\d{2}-\d{4}/;
+        if (entryDate && !dateLineRegex.test(line)) {
+           return `    ${values.ticket}: ${values.description} ${values.timeSpent}`;
+        }
+        return `${values.ticket}: ${values.description} ${values.timeSpent}`;
+      }
+      return line;
+    }).join('\n');
+    
+    let textToParse = worklogText;
+    if(found){
+      textToParse = newText;
+    } else {
+        // Fallback if we can't find the line: just rebuild from current state
+        textToParse = entries.map((e) => {
+            const date = e.startTime ? format(e.startTime, 'dd-MM-yyyy') : null;
+            if (e.id === editingEntry.id) {
+                return `${values.ticket}: ${values.description} ${values.timeSpent}`;
+            }
+            return `${e.ticket}: ${e.description} ${formatMinutesToTime(e.timeSpentInMinutes)}`;
+        }).join('\n');
+    }
+    
+    setWorklogText(textToParse);
+    handleParse(textToParse);
 
     handleEditClose();
     toast({ title: "Entry Updated" });
@@ -154,8 +195,7 @@ export function JiraLogger() {
 
   const handleDelete = (id: string) => {
     const newEntries = entries.filter((e) => e.id !== id);
-    const updatedText = newEntries.map(e => `${e.ticket}: ${e.description} ${formatMinutesToTime(e.timeSpentInMinutes)}`).join('\n');
-    handleParse(updatedText);
+    setEntries(newEntries);
     toast({ title: "Entry Removed" });
   };
 
@@ -285,7 +325,7 @@ export function JiraLogger() {
                         Enter your Jira credentials to log your work. These are not saved.
                     </p>
                     <Form {...settingsForm}>
-                        <form className="space-y-4">
+                        <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
                             <FormField
                             control={settingsForm.control}
                             name="url"
@@ -360,8 +400,17 @@ export function JiraLogger() {
             <Textarea
               value={worklogText}
               onChange={(e) => setWorklogText(e.target.value)}
-              placeholder={`16-10-2025 Thursday\n    PROJ-123: Feature development and testing: 2h 30m\n    TEAM-456 (Team Meeting): Daily stand-up and planning: 15m\n    BUG-789: Investigated and fixed a critical bug: 1h`}
-              rows={8}
+              placeholder={`16-10-2025 Thursday
+    PROJ-123: Feature development and testing: 2h 30m
+    TEAM-456 (Team Meeting): Daily stand-up and planning: 15m
+    BUG-789: Investigated and fixed a critical bug: 1h
+Total: 3h 45m
+
+17-10-2025 Friday
+    PROJ-124: Code review for new feature: 1h
+    SUPPORT-88: Assisted customer with a login issue: 30m
+Total: 1h 30m`}
+              rows={10}
               className="text-base"
             />
           </div>
@@ -402,64 +451,77 @@ export function JiraLogger() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {entries.map((entry) => (
-                    <TableRow key={entry.id} className={entry.logStatus === 'error' ? 'bg-destructive/10' : ''}>
-                      <TableCell><StatusIcon status={entry.logStatus} /></TableCell>
-                      <TableCell>
-                        {entry.startTime ? format(entry.startTime, "dd-MM-yyyy") : "N/A"}
-                      </TableCell>
-                      <TableCell>
-                        {entry.startTime ? format(entry.startTime, "HH:mm") : "N/A"}
-                      </TableCell>
-                      <TableCell>
-                        {entry.endTime ? format(entry.endTime, "HH:mm") : "N'A"}
-                      </TableCell>
-                      <TableCell className="font-medium">{entry.ticket}</TableCell>
-                      <TableCell>{entry.description}</TableCell>
-                      <TableCell className="text-right">
-                        {formatMinutesToTime(entry.timeSpentInMinutes)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditOpen(entry)}
-                          disabled={isLogging}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(entry.id)}
-                          disabled={isLogging}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                  {Object.entries(groupedEntries).map(([date, group]) => (
+                    <>
+                      {group.entries.map((entry) => (
+                        <TableRow key={entry.id} className={entry.logStatus === 'error' ? 'bg-destructive/10' : ''}>
+                          <TableCell><StatusIcon status={entry.logStatus} /></TableCell>
+                          <TableCell>
+                            {entry.startTime ? format(entry.startTime, "dd-MM-yyyy") : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {entry.startTime ? format(entry.startTime, "HH:mm") : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {entry.endTime ? format(entry.endTime, "HH:mm") : "N/A"}
+                          </TableCell>
+                          <TableCell className="font-medium">{entry.ticket}</TableCell>
+                          <TableCell>{entry.description}</TableCell>
+                          <TableCell className="text-right">
+                            {formatMinutesToTime(entry.timeSpentInMinutes)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditOpen(entry)}
+                              disabled={isLogging}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(entry.id)}
+                              disabled={isLogging}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      <TableRow className="bg-muted/50 font-semibold">
+                          <TableCell colSpan={6} className="text-right">Total for {date}:</TableCell>
+                          <TableCell className="text-right">{formatMinutesToTime(group.totalMinutes)}</TableCell>
+                          <TableCell></TableCell>
+                      </TableRow>
+                    </>
                   ))}
                 </TableBody>
+                <UiTableFooter>
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-right font-bold text-lg">Grand Total:</TableCell>
+                    <TableCell className="text-right font-bold text-lg">{formatMinutesToTime(totalMinutes)}</TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                </UiTableFooter>
               </Table>
             </CardContent>
-            <CardFooter className="flex justify-between items-center">
-              <Badge variant="secondary" className="text-base">
-                Total: {formatMinutesToTime(totalMinutes)}
-              </Badge>
-              <Button onClick={handleLogWork} disabled={isLogging}>
+            <CardFooter className="flex justify-end">
+              <Button onClick={handleLogWork} disabled={isLogging} size="lg">
                 {isLogging ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
-                {isLogging ? "Logging..." : "Log to Jira"}
+                {isLogging ? "Logging..." : `Log ${entries.length} Entries to Jira`}
               </Button>
             </CardFooter>
           </>
         )}
       </Card>
 
-      {isSettingsEmpty && (
-        <Alert variant="destructive" className="mt-4">
-          <AlertTriangle className="h-4 w-4" />
+      {isSettingsEmpty && !isLogging && entries.length === 0 && (
+        <Alert variant="default" className="mt-4 border-primary">
+          <AlertTriangle className="h-4 w-4 text-primary" />
           <AlertTitle>Action Required</AlertTitle>
           <AlertDescription>
             Please configure your Jira credentials in the settings above to log your work.
@@ -536,5 +598,3 @@ export function JiraLogger() {
     </>
   );
 }
-
-    
