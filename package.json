@@ -1,15 +1,30 @@
 {
-  "name": "nextn",
-  "version": "0.1.0",
+  "name": "jiralogger-pro",
+  "version": "1.0.0",
+  "description": "A powerful worklog parser and logger for Jira with AI-powered ticket suggestions",
+  "author": "SanskarSethiya-MXT",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack -p 9002",
+    "dev:tunnel": "echo 'Run these in separate terminals:' && echo '1. npm run dev' && echo '2. forge tunnel'",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
-    "build": "NODE_ENV=production next build",
-    "start": "next start",
+    "build": "set NODE_ENV=production && next build",
+    "start": "next start -p 9002",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "lint:fix": "next lint --fix",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "clean": "if exist .next rmdir /s /q .next && if exist node_modules rmdir /s /q node_modules",
+    "reinstall": "npm run clean && npm install",
+    "test": "npm run typecheck && npm run lint",
+    "forge:register": "forge register",
+    "forge:deploy": "npm run build && forge deploy",
+    "forge:install": "forge install",
+    "forge:logs": "forge logs",
+    "prepare": "node -e \"try { require('husky').install() } catch (e) {}\""
   },
   "dependencies": {
     "@forge/api": "^3.0.0",
@@ -63,6 +78,8 @@
     "@types/react-dom": "^18",
     "genkit-cli": "^1.20.0",
     "postcss": "^8",
+    "prettier": "^3.3.3",
+    "prettier-plugin-tailwindcss": "^0.6.11",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
   }

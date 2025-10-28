@@ -1,21 +1,25 @@
 
 modules:
   'jira:projectPage':
-    - key: jiralogger-pro-hello-world-page
+    - key: jiralogger-pro-project-page
       resource: main
       title: JiraLogger Pro
-      icon: https://raw.githubusercontent.com/jiralogger-pro/logo/main/icon.svg
-  function:
-    - key: log-work
-      handler: index.logWork
+      icon: https://raw.githubusercontent.com/SanskarSethiya-MXT/JiraLogger/main/public/icon.svg
+  'jira:globalPage':
+    - key: jiralogger-pro-global-page
+      resource: main
+      title: JiraLogger Pro
+      icon: https://raw.githubusercontent.com/SanskarSethiya-MXT/JiraLogger/main/public/icon.svg
 resources:
   - key: main
     path: src/app/page.tsx
 app:
-  id: 'ari:cloud:ecosystem::app/a5b6d915-7799-4452-9952-1678853e4142'
+  id: 'ari:cloud:ecosystem::app/YOUR_APP_ID_HERE'
+  # Replace YOUR_APP_ID_HERE with your actual Forge app ID after running 'forge register'
 permissions:
   scopes:
     - 'write:jira-work'
+    - 'read:jira-work'
     - 'read:jira-user'
   content:
     styles:
@@ -27,12 +31,5 @@ permissions:
     fetch:
       backend:
         - '*.atlassian.net'
-remotes:
-  - key: genkit-dev
-    baseUrl: 'http://localhost:3400'
-functions:
-  - key: testGenkitFlow
-    handler: index.testGenkitFlow
-    providers:
-      function:
-        - genkit-dev
+        - 'generativelanguage.googleapis.com'
+
