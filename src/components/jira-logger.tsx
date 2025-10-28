@@ -386,69 +386,65 @@ export function JiraLogger() {
                     </div>
                 </AccordionTrigger>
                 <AccordionContent className="px-6 pt-2">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-4">
-                        Enter your Jira credentials to log your work. These are not saved.
-                    </p>
-                    <Form {...settingsForm}>
-                        <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-                            <FormField
-                            control={settingsForm.control}
-                            name="url"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Jira URL</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="https://your-company.atlassian.net" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
+                  <p className="text-sm text-muted-foreground mb-4">
+                      Enter your Jira credentials to log your work. These are not saved.
+                  </p>
+                  <Form {...settingsForm}>
+                      <form className="space-y-4 max-w-md" onSubmit={(e) => e.preventDefault()}>
+                          <FormField
+                          control={settingsForm.control}
+                          name="url"
+                          render={({ field }) => (
+                              <FormItem>
+                              <FormLabel>Jira URL</FormLabel>
+                              <FormControl>
+                                  <Input placeholder="https://your-company.atlassian.net" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                              </FormItem>
+                          )}
+                          />
+                          <FormField
+                          control={settingsForm.control}
+                          name="email"
+                          render={({ field }) => (
+                              <FormItem>
+                              <FormLabel>Email</FormLabel>
+                              <FormControl>
+                                  <Input placeholder="you@example.com" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                              </FormItem>
+                          )}
+                          />
+                          <FormField
+                          control={settingsForm.control}
+                          name="apiToken"
+                          render={({ field }) => (
+                              <FormItem>
+                              <FormLabel>API Token</FormLabel>
+                              <FormControl>
+                                  <Input type="password" placeholder="Your Jira API Token" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                              </FormItem>
+                          )}
+                          />
+                          <FormItem>
+                            <Label htmlFor="start-time">Day Start Time</Label>
+                            <Input 
+                              id="start-time"
+                              type="time" 
+                              value={dayStartTime} 
+                              onChange={e => setDayStartTime(e.target.value)}
+                              className="w-min"
                             />
-                            <FormField
-                            control={settingsForm.control}
-                            name="email"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Email</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="you@example.com" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                            />
-                            <FormField
-                            control={settingsForm.control}
-                            name="apiToken"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>API Token</FormLabel>
-                                <FormControl>
-                                    <Input type="password" placeholder="Your Jira API Token" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                            />
-                        </form>
-                    </Form>
-                  </div>
-                  <div className="space-y-2">
-                      <Label htmlFor="start-time">Day Start Time</Label>
-                      <Input 
-                        id="start-time"
-                        type="time" 
-                        value={dayStartTime} 
-                        onChange={e => setDayStartTime(e.target.value)}
-                        className="w-min"
-                      />
-                      <p className="text-sm text-muted-foreground">
-                        Set the start time for your workday to ensure accurate log timestamps.
-                      </p>
-                  </div>
-                </div>
+                             <p className="text-sm text-muted-foreground">
+                              Set the start time for your workday to ensure accurate log timestamps.
+                            </p>
+                          </FormItem>
+                      </form>
+                  </Form>
                 </AccordionContent>
             </AccordionItem>
         </Accordion>
