@@ -1,7 +1,6 @@
 "use client";
 
 import { Icons } from "@/components/icons";
-import { SettingsDialog } from "@/components/settings-dialog";
 
 export function Header() {
   return (
@@ -16,7 +15,7 @@ export function Header() {
           </a>
         </div>
         <div className="flex flex-1 items-center justify-end space-x-2">
-          <SettingsDialog />
+          {/* SettingsDialog removed */}
         </div>
       </div>
     </header>

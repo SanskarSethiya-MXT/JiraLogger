@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useJiraSettings } from "@/hooks/use-jira-settings";
 import { formatMinutesToTime, parseWorklog } from "@/lib/parser";
@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Trash2, Edit, AlertTriangle, CheckCircle, Clock, FileUp } from "lucide-react";
+import { Loader2, Trash2, Edit, AlertTriangle, CheckCircle, Clock, FileUp, Settings } from "lucide-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -48,11 +48,18 @@ import { TicketSuggester } from "@/components/ticket-suggester";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "./ui/badge";
 import { format } from "date-fns";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const editFormSchema = z.object({
   ticket: z.string().regex(/^[A-Z][A-Z0-9]+-\d+$/, "Invalid Jira ticket format"),
   description: z.string().min(1, "Description cannot be empty"),
   timeSpent: z.string().min(1, "Time spent cannot be empty"),
+});
+
+const settingsFormSchema = z.object({
+  url: z.string().url({ message: "Please enter a valid Jira URL." }),
+  email: z.string().email({ message: "Please enter a valid email." }),
+  apiToken: z.string().min(1, { message: "API token cannot be empty." }),
 });
 
 type LogStatus = "pending" | "logging" | "success" | "error";
@@ -61,13 +68,37 @@ type EntryWithStatus = WorklogEntry & { logStatus: LogStatus };
 
 export function JiraLogger() {
   const { toast } = useToast();
-  const { settings, isLoaded } = useJiraSettings();
+  const { settings, saveSettings, isLoaded } = useJiraSettings();
   const [worklogText, setWorklogText] = useState("");
   const [entries, setEntries] = useState<EntryWithStatus[]>([]);
   const [editingEntry, setEditingEntry] = useState<EntryWithStatus | null>(null);
   const [isLogging, setIsLogging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dayStartTime, setDayStartTime] = useState("09:00");
+  
+  const settingsForm = useForm<z.infer<typeof settingsFormSchema>>({
+    resolver: zodResolver(settingsFormSchema),
+    defaultValues: {
+      url: "",
+      email: "",
+      apiToken: "",
+    },
+    disabled: !isLoaded,
+  });
+
+  useEffect(() => {
+    if (isLoaded && settings) {
+      settingsForm.reset(settings);
+    }
+  }, [isLoaded, settings, settingsForm]);
+
+  function onSettingsSubmit(values: z.infer<typeof settingsFormSchema>) {
+    saveSettings(values);
+    toast({
+      title: "Settings Saved",
+      description: "Your Jira credentials have been updated.",
+    });
+  }
 
   const editForm = useForm<z.infer<typeof editFormSchema>>({
     resolver: zodResolver(editFormSchema),
@@ -124,7 +155,6 @@ export function JiraLogger() {
   const onEditSubmit = (values: z.infer<typeof editFormSchema>) => {
     if (!editingEntry) return;
     
-    // We need to rebuild the text representation of all entries to re-parse and get correct times
     const textForReparsing = entries.map((e) => {
         if (e.id === editingEntry.id) {
             return `${values.ticket}: ${values.description} ${values.timeSpent}`;
@@ -140,7 +170,6 @@ export function JiraLogger() {
 
   const handleDelete = (id: string) => {
     const newEntries = entries.filter((e) => e.id !== id);
-    // Re-calculate start times
     const updatedText = newEntries.map(e => `${e.ticket}: ${e.description} ${formatMinutesToTime(e.timeSpentInMinutes)}`).join('\n');
     handleParse(updatedText);
     toast({ title: "Entry Removed" });
@@ -252,12 +281,74 @@ export function JiraLogger() {
   return (
     <>
       <Card>
+        <Accordion type="single" collapsible className="w-full" defaultValue={!settings ? "item-1" : undefined}>
+            <AccordionItem value="item-1">
+                <AccordionTrigger className="px-6">
+                    <div className="flex items-center gap-2">
+                        <Settings className="h-5 w-5" />
+                        <span className="font-semibold">Jira Settings</span>
+                    </div>
+                </AccordionTrigger>
+                <AccordionContent className="px-6 pt-2">
+                <p className="text-sm text-muted-foreground mb-4">
+                    Enter your Jira credentials to log your work. Your credentials are saved only in your browser.
+                </p>
+                <Form {...settingsForm}>
+                    <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-4">
+                        <FormField
+                        control={settingsForm.control}
+                        name="url"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Jira URL</FormLabel>
+                            <FormControl>
+                                <Input placeholder="https://your-company.atlassian.net" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        <FormField
+                        control={settingsForm.control}
+                        name="email"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Email</FormLabel>
+                            <FormControl>
+                                <Input placeholder="you@example.com" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        <FormField
+                        control={settingsForm.control}
+                        name="apiToken"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>API Token</FormLabel>
+                            <FormControl>
+                                <Input type="password" placeholder="Your Jira API Token" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        <Button type="submit" disabled={settingsForm.formState.isSubmitting}>
+                            Save Settings
+                        </Button>
+                    </form>
+                </Form>
+                </AccordionContent>
+            </AccordionItem>
+        </Accordion>
+        
         <CardHeader>
           <CardTitle>Create Worklog</CardTitle>
           <CardDescription>
             Paste your worklog text below or upload a .txt file. The format is:
             <code className="ml-2 bg-muted p-1 rounded-sm text-sm">
-              TICKET-123 (Context): Description: 1h 30m
+              TICKET-123: Description 1h 30m
             </code>
           </CardDescription>
         </CardHeader>
@@ -390,7 +481,7 @@ export function JiraLogger() {
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Action Required</AlertTitle>
           <AlertDescription>
-            Please configure your Jira credentials in the settings (top right corner) to log your work.
+            Please configure your Jira credentials in the settings to log your work.
           </AlertDescription>
         </Alert>
       )}
