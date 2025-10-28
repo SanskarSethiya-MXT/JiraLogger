@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, Fragment } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { formatMinutesToTime, parseWorklog } from "@/lib/parser";
 import type { WorklogEntry, JiraSettings } from "@/types";
@@ -452,7 +452,7 @@ Total: 1h 30m`}
                 </TableHeader>
                 <TableBody>
                   {Object.entries(groupedEntries).map(([date, group]) => (
-                    <>
+                    <Fragment key={date}>
                       {group.entries.map((entry) => (
                         <TableRow key={entry.id} className={entry.logStatus === 'error' ? 'bg-destructive/10' : ''}>
                           <TableCell><StatusIcon status={entry.logStatus} /></TableCell>
@@ -495,7 +495,7 @@ Total: 1h 30m`}
                           <TableCell className="text-right">{formatMinutesToTime(group.totalMinutes)}</TableCell>
                           <TableCell></TableCell>
                       </TableRow>
-                    </>
+                    </Fragment>
                   ))}
                 </TableBody>
                 <UiTableFooter>
