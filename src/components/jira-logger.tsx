@@ -393,10 +393,10 @@ export function JiraLogger() {
                   <TableRow>
                     <TableHead className="w-[40px]"></TableHead>
                     <TableHead className="w-[120px]">Date</TableHead>
-                    <TableHead className="w-[150px]">Ticket</TableHead>
-                    <TableHead>Description</TableHead>
                     <TableHead className="w-[120px]">Start Time</TableHead>
                     <TableHead className="w-[120px]">End Time</TableHead>
+                    <TableHead className="w-[150px]">Ticket</TableHead>
+                    <TableHead>Description</TableHead>
                     <TableHead className="w-[100px] text-right">Time</TableHead>
                     <TableHead className="w-[100px] text-right">Actions</TableHead>
                   </TableRow>
@@ -408,14 +408,14 @@ export function JiraLogger() {
                       <TableCell>
                         {entry.startTime ? format(entry.startTime, "dd-MM-yyyy") : "N/A"}
                       </TableCell>
-                      <TableCell className="font-medium">{entry.ticket}</TableCell>
-                      <TableCell>{entry.description}</TableCell>
-                       <TableCell>
+                      <TableCell>
                         {entry.startTime ? format(entry.startTime, "HH:mm") : "N/A"}
                       </TableCell>
                       <TableCell>
                         {entry.endTime ? format(entry.endTime, "HH:mm") : "N'A"}
                       </TableCell>
+                      <TableCell className="font-medium">{entry.ticket}</TableCell>
+                      <TableCell>{entry.description}</TableCell>
                       <TableCell className="text-right">
                         {formatMinutesToTime(entry.timeSpentInMinutes)}
                       </TableCell>
