@@ -57,7 +57,7 @@ export function SettingsDialog() {
         apiToken: settings.apiToken || "",
       });
     }
-  }, [settings, form]);
+  }, [settings, form, isLoaded]);
 
 
   function onSubmit(values: z.infer<typeof formSchema>) {
