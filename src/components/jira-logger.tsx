@@ -73,6 +73,7 @@ export function JiraLogger() {
   const [entries, setEntries] = useState<EntryWithStatus[]>([]);
   const [editingEntry, setEditingEntry] = useState<EntryWithStatus | null>(null);
   const [isLogging, setIsLogging] = useState(false);
+  const [loggingId, setLoggingId] = useState<string | null>(null); // To track which button is loading
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dayStartTime, setDayStartTime] = useState("09:00");
   const [activeTab, setActiveTab] = useState<string>("");
@@ -205,7 +206,7 @@ export function JiraLogger() {
     toast({ title: "Entry Removed" });
   };
 
-  const handleLogWork = async () => {
+  const handleLogWork = async (entriesToLog: EntryWithStatus[], buttonId: string) => {
     const settings = settingsForm.getValues();
     const isValid = await settingsForm.trigger();
 
@@ -219,8 +220,9 @@ export function JiraLogger() {
     }
   
       setIsLogging(true);
+      setLoggingId(buttonId);
   
-      const promises = entries.map(async (entry) => {
+      const promises = entriesToLog.map(async (entry) => {
         if (!entry.startTime) {
           console.error(`Skipping entry ${entry.ticket} due to missing start time.`);
           return { success: false, ticket: entry.ticket, error: "Missing start time" };
@@ -268,7 +270,7 @@ export function JiraLogger() {
         toast({
             variant: "destructive",
             title: "Some Worklogs Failed",
-            description: `${failures.length} out of ${entries.length} entries failed to log.`,
+            description: `${failures.length} out of entriesToLog.length} entries failed to log.`,
         });
       } else {
         toast({
@@ -279,6 +281,7 @@ export function JiraLogger() {
       }
   
       setIsLogging(false);
+      setLoggingId(null);
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -504,9 +507,14 @@ Total: 1h 30m`}
                       </TableBody>
                       <UiTableFooter>
                         <TableRow>
-                          <TableCell colSpan={5} className="text-right font-bold text-lg">Total:</TableCell>
-                          <TableCell className="text-right font-bold text-lg">{formatMinutesToTime(group.totalMinutes)}</TableCell>
-                          <TableCell></TableCell>
+                          <TableCell colSpan={5} className="font-bold">Total:</TableCell>
+                          <TableCell className="text-right font-bold">{formatMinutesToTime(group.totalMinutes)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button onClick={() => handleLogWork(group.entries, date)} disabled={isLogging} size="sm">
+                              {isLogging && loggingId === date ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                              Log Day
+                            </Button>
+                          </TableCell>
                         </TableRow>
                       </UiTableFooter>
                     </Table>
@@ -514,12 +522,12 @@ Total: 1h 30m`}
                 ))}
               </Tabs>
             </CardContent>
-            <CardFooter className="flex justify-end">
-              <Button onClick={handleLogWork} disabled={isLogging} size="lg">
-                {isLogging ? (
+            <CardFooter className="flex justify-end border-t pt-6">
+              <Button onClick={() => handleLogWork(entries, 'all')} disabled={isLogging} size="lg">
+                {isLogging && loggingId === 'all' ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
-                {isLogging ? "Logging..." : `Log ${entries.length} Entries to Jira`}
+                {isLogging && loggingId === 'all' ? "Logging..." : `Log All ${entries.length} Entries`}
               </Button>
             </CardFooter>
           </>
