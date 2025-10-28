@@ -525,8 +525,8 @@ Total: 1h 30m`}
                           <TableHead className="w-[120px]">End Time</TableHead>
                           <TableHead className="w-[150px]">Ticket</TableHead>
                           <TableHead>Description</TableHead>
-                          <TableHead className="w-[100px] text-right">Time</TableHead>
-                          <TableHead className="w-[100px] text-right">Actions</TableHead>
+                          <TableHead className="text-right w-[100px]">Time</TableHead>
+                          <TableHead className="text-right w-[120px]">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -574,7 +574,7 @@ Total: 1h 30m`}
                       </TableBody>
                       <UiTableFooter>
                         <TableRow>
-                          <TableCell colSpan={7} className="font-bold">Total:</TableCell>
+                          <TableCell colSpan={6} className="font-bold">Total:</TableCell>
                           <TableCell className="text-right font-bold">{formatMinutesToTime(group.totalMinutes)}</TableCell>
                           <TableCell className="text-right">
                             <Button onClick={() => handleLogWork(group.entries, date)} disabled={isLogging} size="sm">
