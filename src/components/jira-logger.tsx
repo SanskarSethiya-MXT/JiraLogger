@@ -77,11 +77,14 @@ export function JiraLogger() {
     try {
       const parsedEntries = parseWorklog(textToParse, dayStartTime);
       if (parsedEntries.length === 0) {
-        toast({
-          variant: "destructive",
-          title: "Parsing Failed",
-          description: "No valid worklog entries found. Check your format.",
-        });
+        if (textToParse.trim()) { // only show error if there was text to parse
+            toast({
+                variant: "destructive",
+                title: "Parsing Failed",
+                description: "No valid worklog entries found. Check your format.",
+            });
+        }
+        setEntries([]);
         return;
       }
       setEntries(parsedEntries.map(e => ({...e, logStatus: 'pending'})));
@@ -120,43 +123,16 @@ export function JiraLogger() {
 
   const onEditSubmit = (values: z.infer<typeof editFormSchema>) => {
     if (!editingEntry) return;
-
-    // We can't recalculate start time here without re-parsing everything,
-    // so we just update the fields that are editable.
-    const newTime = parseWorklog(
-      `${values.ticket}: ${values.description} (${values.timeSpent})`, dayStartTime
-    )[0]?.timeSpentInMinutes;
-
-    if (!newTime) {
-      editForm.setError("timeSpent", { message: "Invalid time format" });
-      return;
-    }
     
-    setEntries(
-      entries.map((e) =>
-        e.id === editingEntry.id
-          ? {
-              ...e,
-              ticket: values.ticket,
-              description: values.description,
-              timeSpentInMinutes: newTime,
-            }
-          : e
-      )
-    );
-
-    // Re-run the parse logic with the updated entries to fix times
-    const updatedText = entries.map(e => {
-       const entryToUpdate = e.id === editingEntry.id ? {
-            ...e,
-            ticket: values.ticket,
-            description: values.description,
-            timeSpentInMinutes: newTime,
-       } : e;
-       return `${entryToUpdate.ticket}: ${entryToUpdate.description} ${formatMinutesToTime(entryToUpdate.timeSpentInMinutes)}`
+    // We need to rebuild the text representation of all entries to re-parse and get correct times
+    const textForReparsing = entries.map((e) => {
+        if (e.id === editingEntry.id) {
+            return `${values.ticket}: ${values.description} ${values.timeSpent}`;
+        }
+        return `${e.ticket}: ${e.description} ${formatMinutesToTime(e.timeSpentInMinutes)}`;
     }).join('\n');
 
-    handleParse(updatedText);
+    handleParse(textForReparsing);
 
     handleEditClose();
     toast({ title: "Entry Updated" });
@@ -164,7 +140,6 @@ export function JiraLogger() {
 
   const handleDelete = (id: string) => {
     const newEntries = entries.filter((e) => e.id !== id);
-    setEntries(newEntries);
     // Re-calculate start times
     const updatedText = newEntries.map(e => `${e.ticket}: ${e.description} ${formatMinutesToTime(e.timeSpentInMinutes)}`).join('\n');
     handleParse(updatedText);
@@ -251,7 +226,7 @@ export function JiraLogger() {
       reader.onload = (e) => {
         const text = e.target?.result as string;
         setWorklogText(text);
-        handleParse(text); // Automatically parse after file read
+        handleParse(text);
       };
       reader.readAsText(file);
     }
@@ -280,9 +255,9 @@ export function JiraLogger() {
         <CardHeader>
           <CardTitle>Create Worklog</CardTitle>
           <CardDescription>
-            Paste your worklog text below or upload a .txt file. Use the format:
+            Paste your worklog text below or upload a .txt file. The format is:
             <code className="ml-2 bg-muted p-1 rounded-sm text-sm">
-              TICKET-123: Did a thing (1h 30m)
+              TICKET-123 (Context): Description: 1h 30m
             </code>
           </CardDescription>
         </CardHeader>
@@ -291,7 +266,7 @@ export function JiraLogger() {
             <Textarea
               value={worklogText}
               onChange={(e) => setWorklogText(e.target.value)}
-              placeholder="16-10-2025 Thursday&#10;    MOL-1099: discussion with Mounir: 1h&#10;    MXT-5573: Madhusheree assisted with using VSCode: 1h 30m"
+              placeholder="16-10-2025 Thursday&#10;    MOL-1099: discussion with Mounir and looked into logs: 1h&#10;    MXT-5573 (Internal meeting): Madhusheree assisted with using VSCode: 1h 30m"
               rows={8}
               className="text-base md:col-span-3"
             />
@@ -338,6 +313,7 @@ export function JiraLogger() {
                     <TableHead className="w-[150px]">Ticket</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead className="w-[120px]">Start Time</TableHead>
+                    <TableHead className="w-[120px]">End Time</TableHead>
                     <TableHead className="w-[100px] text-right">Time</TableHead>
                     <TableHead className="w-[100px] text-right">Actions</TableHead>
                   </TableRow>
@@ -350,6 +326,9 @@ export function JiraLogger() {
                       <TableCell>{entry.description}</TableCell>
                        <TableCell>
                         {entry.startTime ? format(entry.startTime, "HH:mm") : "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        {entry.endTime ? format(entry.endTime, "HH:mm") : "N/A"}
                       </TableCell>
                       <TableCell className="text-right">
                         {formatMinutesToTime(entry.timeSpentInMinutes)}
@@ -413,7 +392,7 @@ export function JiraLogger() {
       )}
 
 
-      <Dialog open={!!editingEntry} onOpenChange={handleEditClose}>
+      <Dialog open={!!editingEntry} onOpenChange={(isOpen) => !isOpen && handleEditClose()}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Worklog Entry</DialogTitle>
@@ -482,5 +461,3 @@ export function JiraLogger() {
     </>
   );
 }
-
-    

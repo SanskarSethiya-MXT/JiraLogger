@@ -4,6 +4,7 @@ export type WorklogEntry = {
   description: string;
   timeSpentInMinutes: number;
   startTime?: Date;
+  endTime?: Date;
 };
 
 export type JiraSettings = {
@@ -11,5 +12,3 @@ export type JiraSettings = {
   email: string;
   apiToken: string;
 };
-
-    
