@@ -10,7 +10,7 @@
     --card-foreground: 216 15% 20%;
     --popover: 0 0% 100%;
     --popover-foreground: 216 15% 20%;
-    --primary: 214 76% 60%;
+    --primary: 221 83% 53%;
     --primary-foreground: 210 40% 98%;
     --secondary: 215 30% 88%;
     --secondary-foreground: 216 15% 20%;
@@ -60,6 +60,6 @@
 
 @layer components {
     .btn-primary-hover-effect {
-        @apply hover:bg-primary/80;
+        @apply hover:bg-primary/90;
     }
 }

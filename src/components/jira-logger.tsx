@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo, Fragment, useEffect } from "react";
+import { useState, useRef, useMemo, Fragment, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { formatMinutesToTime, parseWorklog, parseTime, timeStringToMinutes, regenerateWorklogText } from "@/lib/parser";
 import type { WorklogEntry, JiraSettings } from "@/types";
@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Trash2, Edit, AlertTriangle, CheckCircle, Clock, FileUp, Settings } from "lucide-react";
+import { Loader2, Trash2, Edit, AlertTriangle, CheckCircle, Clock, FileUp, Settings, Undo, Redo } from "lucide-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -77,6 +77,13 @@ export function JiraLogger() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dayStartTime, setDayStartTime] = useState("09:00");
   const [activeTab, setActiveTab] = useState<string>("");
+
+  const [history, setHistory] = useState<EntryWithStatus[][]>([[]]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+
+  const canUndo = historyIndex > 0;
+  const canRedo = historyIndex < history.length - 1;
+
   
   const settingsForm = useForm<z.infer<typeof settingsFormSchema>>({
     resolver: zodResolver(settingsFormSchema),
@@ -90,6 +97,36 @@ export function JiraLogger() {
   const editForm = useForm<z.infer<typeof editFormSchema>>({
     resolver: zodResolver(editFormSchema),
   });
+
+  const updateStateAndHistory = useCallback((newEntries: EntryWithStatus[]) => {
+    setEntries(newEntries);
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(newEntries);
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  }, [history, historyIndex]);
+
+  useEffect(() => {
+    if (entries.length > 0) {
+      setWorklogText(regenerateWorklogText(entries));
+    }
+  }, [entries]);
+
+  const handleUndo = () => {
+    if (canUndo) {
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      setEntries(history[newIndex]);
+    }
+  };
+
+  const handleRedo = () => {
+    if (canRedo) {
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      setEntries(history[newIndex]);
+    }
+  };
 
   const groupedEntries = useMemo(() => {
     return entries.reduce((acc, entry) => {
@@ -124,10 +161,12 @@ export function JiraLogger() {
                 description: "No valid worklog entries found. Check your format.",
             });
         }
-        setEntries([]);
+        updateStateAndHistory([]);
         return;
       }
-      setEntries(parsedEntries.map(e => ({...e, logStatus: 'pending'})));
+      const newEntries = parsedEntries.map(e => ({...e, logStatus: 'pending' as LogStatus}));
+      updateStateAndHistory(newEntries);
+      
       toast({
         title: "Parsing Successful",
         description: `Found ${parsedEntries.length} worklog entries.`,
@@ -159,40 +198,31 @@ export function JiraLogger() {
   const onEditSubmit = (values: z.infer<typeof editFormSchema>) => {
     if (!editingEntry) return;
 
-    setEntries(prevEntries => {
-        const timeSpentInMinutes = timeStringToMinutes(values.timeSpent);
-        let newEntries = [...prevEntries];
-        const entryIndex = newEntries.findIndex(e => e.id === editingEntry.id);
-        
-        if (entryIndex !== -1) {
-            newEntries[entryIndex] = {
-                ...newEntries[entryIndex],
-                ticket: values.ticket,
-                description: values.description,
-                timeSpentInMinutes: timeSpentInMinutes,
-            };
-        }
+    const timeSpentInMinutes = timeStringToMinutes(values.timeSpent);
+    let newEntries = [...entries];
+    const entryIndex = newEntries.findIndex(e => e.id === editingEntry.id);
+    
+    if (entryIndex !== -1) {
+        newEntries[entryIndex] = {
+            ...newEntries[entryIndex],
+            ticket: values.ticket,
+            description: values.description,
+            timeSpentInMinutes: timeSpentInMinutes,
+        };
+    }
 
-        // Recalculate times for all entries
-        const recalculatedEntries = recalculateEntryTimes(newEntries, dayStartTime);
-        setWorklogText(regenerateWorklogText(recalculatedEntries));
-        return recalculatedEntries;
-    });
+    const recalculatedEntries = recalculateEntryTimes(newEntries, dayStartTime);
+    updateStateAndHistory(recalculatedEntries);
 
     handleEditClose();
     toast({ title: "Entry Updated" });
   };
 
 
-  const handleDelete = (id: string, dateKey: string) => {
-    setEntries(prevEntries => {
-        const newEntries = prevEntries.filter(e => e.id !== id);
-        
-        // Recalculate times for all entries
-        const recalculatedEntries = recalculateEntryTimes(newEntries, dayStartTime);
-        setWorklogText(regenerateWorklogText(recalculatedEntries));
-        return recalculatedEntries;
-    });
+  const handleDelete = (id: string) => {
+    const newEntries = entries.filter(e => e.id !== id);
+    const recalculatedEntries = recalculateEntryTimes(newEntries, dayStartTime);
+    updateStateAndHistory(recalculatedEntries);
     toast({ title: "Entry Removed" });
   };
   
@@ -407,7 +437,7 @@ export function JiraLogger() {
                         className="w-min"
                       />
                       <p className="text-sm text-muted-foreground">
-                          This time is used as the starting point for the first log entry of each day.
+                          Set the start time for your workday to ensure accurate log timestamps.
                       </p>
                   </div>
                 </div>
@@ -466,6 +496,14 @@ Total: 1h 30m`}
               <CardDescription>Review your entries before logging them to Jira.</CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="mb-4 flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={handleUndo} disabled={!canUndo}>
+                      <Undo className="mr-2 h-4 w-4" /> Undo
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleRedo} disabled={!canRedo}>
+                      <Redo className="mr-2 h-4 w-4" /> Redo
+                  </Button>
+              </div>
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList>
                   {Object.keys(groupedEntries).map(date => (
@@ -522,7 +560,7 @@ Total: 1h 30m`}
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => handleDelete(entry.id, date)}
+                                  onClick={() => handleDelete(entry.id)}
                                   disabled={isLogging}
                                   className="h-8 w-8"
                                 >
@@ -641,3 +679,5 @@ Total: 1h 30m`}
     </>
   );
 }
+
+    
