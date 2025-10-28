@@ -10,7 +10,7 @@
 import { useState, useRef, useMemo, Fragment, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { formatMinutesToTime, parseWorklog, parseTime, timeStringToMinutes, regenerateWorklogText } from "@/lib/parser";
-import type { WorklogEntry, JiraSettings } from "@/types";
+import type { WorklogEntry } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -570,7 +570,7 @@ Total: 1h 30m`}
                                   size="icon"
                                   onClick={() => handleDelete(entry.id)}
                                   disabled={isLogging}
-                                  className="h-8 w-8"
+                                  className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -581,7 +581,7 @@ Total: 1h 30m`}
                       </TableBody>
                       <UiTableFooter>
                         <TableRow>
-                          <TableCell colSpan={6} className="font-bold">Total:</TableCell>
+                          <TableCell colSpan={7} className="font-bold">Total:</TableCell>
                           <TableCell className="text-right font-bold">{formatMinutesToTime(group.totalMinutes)}</TableCell>
                           <TableCell className="text-right">
                             <Button onClick={() => handleLogWork(group.entries, date)} disabled={isLogging} size="sm">
@@ -683,3 +683,5 @@ Total: 1h 30m`}
     </>
   );
 }
+
+    
