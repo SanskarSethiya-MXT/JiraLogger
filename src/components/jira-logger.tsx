@@ -49,12 +49,12 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Trash2, Edit, AlertTriangle, CheckCircle, Clock, FileUp, Settings, Undo, Redo } from "lucide-react";
+import { Loader2, Trash2, Edit, AlertTriangle, CheckCircle, Clock, FileUp, Undo, Redo } from "lucide-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, addMinutes } from "date-fns";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { requestJira } from "@forge/bridge";
 
 
 const editFormSchema = z.object({
@@ -283,22 +283,18 @@ export function JiraLogger() {
             started: started,
           };
   
-          // This is a placeholder for your actual Jira API call.
-          // You will need to replace this with your own fetch logic and authentication.
-          const response = await fetch(`/api/jira/issue/${entry.ticket}/worklog`, {
+          const response = await requestJira(`/rest/api/3/issue/${entry.ticket}/worklog`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                // Add your Authorization headers here
+                'Accept': 'application/json',
             },
             body: JSON.stringify(body)
           });
-
-
   
           if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to log work');
+            throw new Error(errorData.errorMessages?.join(', ') || 'Failed to log work');
           }
           
           setEntries(prev => prev.map(e => e.id === entry.id ? { ...e, logStatus: 'success' } : e));
@@ -317,7 +313,7 @@ export function JiraLogger() {
         toast({
             variant: "destructive",
             title: "Some Worklogs Failed",
-            description: `${failures.length} out of ${entriesToLog.length} entries failed to log. Check console for details.`,
+            description: `${failures.length} out of ${entriesToLog.length} entries failed to log.`,
         });
       } else {
         toast({
@@ -369,20 +365,18 @@ export function JiraLogger() {
             <CardTitle>Settings</CardTitle>
         </CardHeader>
         <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
-                <div className="space-y-2">
-                    <Label htmlFor="start-time">Day Start Time</Label>
-                    <Input 
-                        id="start-time"
-                        type="time" 
-                        value={dayStartTime} 
-                        onChange={e => setDayStartTime(e.target.value)}
-                        className="w-auto"
-                    />
-                    <p className="text-sm text-muted-foreground">
-                        The start time for the first entry of each day.
-                    </p>
-                </div>
+            <div className="space-y-2">
+                <Label htmlFor="start-time">Day Start Time</Label>
+                <Input 
+                    id="start-time"
+                    type="time" 
+                    value={dayStartTime} 
+                    onChange={e => setDayStartTime(e.target.value)}
+                    className="w-auto"
+                />
+                <p className="text-sm text-muted-foreground">
+                    The start time for the first entry of each day.
+                </p>
             </div>
         </CardContent>
         
@@ -606,5 +600,3 @@ Total: 1h 30m`}
     </>
   );
 }
-
-    
