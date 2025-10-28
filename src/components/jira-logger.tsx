@@ -160,80 +160,66 @@ export function JiraLogger() {
     if (!editingEntry) return;
 
     setEntries(prevEntries => {
-      const timeSpentInMinutes = timeStringToMinutes(values.timeSpent);
-      
-      const newEntries = prevEntries.map(e => 
-        e.id === editingEntry.id 
-          ? {
-              ...e, 
-              ticket: values.ticket,
-              description: values.description,
-              timeSpentInMinutes: timeSpentInMinutes,
-            }
-          : e
-      );
-
-      // Recalculate start/end times
-      const dateGroups: Record<string, EntryWithStatus[]> = {};
-      newEntries.forEach(entry => {
-        const dateKey = entry.startTime ? format(entry.startTime, "dd-MM-yyyy") : 'Invalid Date';
-        if (!dateGroups[dateKey]) {
-          dateGroups[dateKey] = [];
+        const timeSpentInMinutes = timeStringToMinutes(values.timeSpent);
+        const entryDateKey = editingEntry.startTime ? format(editingEntry.startTime, 'dd-MM-yyyy') : 'Invalid Date';
+        const [startHour, startMinute] = dayStartTime.split(':').map(Number);
+        
+        let newEntries = [...prevEntries];
+        const entryIndex = newEntries.findIndex(e => e.id === editingEntry.id);
+        
+        if (entryIndex !== -1) {
+            newEntries[entryIndex] = {
+                ...newEntries[entryIndex],
+                ticket: values.ticket,
+                description: values.description,
+                timeSpentInMinutes: timeSpentInMinutes,
+            };
         }
-        dateGroups[dateKey].push(entry);
-      });
 
-      const updatedEntriesWithTimes: EntryWithStatus[] = [];
-      const [startHour, startMinute] = dayStartTime.split(':').map(Number);
-
-      Object.keys(dateGroups).sort().forEach(dateKey => {
-        let currentLogTime = parseTime(dateKey, startHour, startMinute);
-        dateGroups[dateKey].forEach(entry => {
-          const startTime = new Date(currentLogTime);
-          const endTime = addMinutes(startTime, entry.timeSpentInMinutes);
-          updatedEntriesWithTimes.push({ ...entry, startTime, endTime });
-          currentLogTime = endTime;
+        // Recalculate times only for the affected date
+        let currentLogTime = parseTime(entryDateKey, startHour, startMinute);
+        newEntries = newEntries.map(entry => {
+            const currentEntryDateKey = entry.startTime ? format(entry.startTime, 'dd-MM-yyyy') : 'Invalid Date';
+            if (currentEntryDateKey === entryDateKey) {
+                const startTime = new Date(currentLogTime);
+                const endTime = addMinutes(startTime, entry.timeSpentInMinutes);
+                currentLogTime = endTime;
+                return { ...entry, startTime, endTime };
+            }
+            return entry;
         });
-      });
 
-      return updatedEntriesWithTimes;
+        return newEntries;
     });
 
     handleEditClose();
     toast({ title: "Entry Updated" });
   };
 
-  const handleDelete = (id: string) => {
+
+  const handleDelete = (id: string, dateKey: string) => {
     setEntries(prevEntries => {
-      const newEntries = prevEntries.filter((e) => e.id !== id);
-
-      // Recalculate start/end times after deletion
-      const dateGroups: Record<string, EntryWithStatus[]> = {};
-      newEntries.forEach(entry => {
-        const dateKey = entry.startTime ? format(entry.startTime, "dd-MM-yyyy") : 'Invalid Date';
-        if (!dateGroups[dateKey]) {
-          dateGroups[dateKey] = [];
-        }
-        dateGroups[dateKey].push(entry);
-      });
-
-      const updatedEntriesWithTimes: EntryWithStatus[] = [];
-      const [startHour, startMinute] = dayStartTime.split(':').map(Number);
-
-      Object.keys(dateGroups).sort().forEach(dateKey => {
-         let currentLogTime = parseTime(dateKey, startHour, startMinute);
-         dateGroups[dateKey].forEach(entry => {
-          const startTime = new Date(currentLogTime);
-          const endTime = addMinutes(startTime, entry.timeSpentInMinutes);
-          updatedEntriesWithTimes.push({ ...entry, startTime, endTime });
-          currentLogTime = endTime;
+        const newEntries = prevEntries.filter(e => e.id !== id);
+        const [startHour, startMinute] = dayStartTime.split(':').map(Number);
+        
+        // Recalculate times only for the affected date
+        let currentLogTime = parseTime(dateKey, startHour, startMinute);
+        const updatedEntries = newEntries.map(entry => {
+            const currentEntryDateKey = entry.startTime ? format(entry.startTime, 'dd-MM-yyyy') : 'Invalid Date';
+            if (currentEntryDateKey === dateKey) {
+                const startTime = new Date(currentLogTime);
+                const endTime = addMinutes(startTime, entry.timeSpentInMinutes);
+                currentLogTime = endTime;
+                return { ...entry, startTime, endTime };
+            }
+            return entry;
         });
-      });
 
-      return updatedEntriesWithTimes;
+        return updatedEntries;
     });
     toast({ title: "Entry Removed" });
   };
+
 
   const handleLogWork = async (entriesToLog: EntryWithStatus[], buttonId: string) => {
     const settings = settingsForm.getValues();
@@ -531,7 +517,7 @@ Total: 1h 30m`}
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => handleDelete(entry.id)}
+                                  onClick={() => handleDelete(entry.id, date)}
                                   disabled={isLogging}
                                   className="h-8 w-8"
                                 >
