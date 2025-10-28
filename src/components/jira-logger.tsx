@@ -270,7 +270,7 @@ export function JiraLogger() {
         toast({
             variant: "destructive",
             title: "Some Worklogs Failed",
-            description: `${failures.length} out of entriesToLog.length} entries failed to log.`,
+            description: `${failures.length} out of ${entriesToLog.length} entries failed to log.`,
         });
       } else {
         toast({
@@ -461,6 +461,7 @@ Total: 1h 30m`}
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-[40px]"></TableHead>
+                          <TableHead className="w-[120px]">Date</TableHead>
                           <TableHead className="w-[120px]">Start Time</TableHead>
                           <TableHead className="w-[120px]">End Time</TableHead>
                           <TableHead className="w-[150px]">Ticket</TableHead>
@@ -473,6 +474,9 @@ Total: 1h 30m`}
                         {group.entries.map((entry) => (
                           <TableRow key={entry.id} className={entry.logStatus === 'error' ? 'bg-destructive/10' : ''}>
                             <TableCell><StatusIcon status={entry.logStatus} /></TableCell>
+                             <TableCell>
+                              {entry.startTime ? format(entry.startTime, "dd-MM-yyyy") : "N/A"}
+                            </TableCell>
                             <TableCell>
                               {entry.startTime ? format(entry.startTime, "HH:mm") : "N/A"}
                             </TableCell>
@@ -507,7 +511,7 @@ Total: 1h 30m`}
                       </TableBody>
                       <UiTableFooter>
                         <TableRow>
-                          <TableCell colSpan={5} className="font-bold">Total:</TableCell>
+                          <TableCell colSpan={6} className="font-bold">Total:</TableCell>
                           <TableCell className="text-right font-bold">{formatMinutesToTime(group.totalMinutes)}</TableCell>
                           <TableCell className="text-right">
                             <Button onClick={() => handleLogWork(group.entries, date)} disabled={isLogging} size="sm">
