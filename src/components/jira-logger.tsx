@@ -54,8 +54,27 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, addMinutes } from "date-fns";
-import { requestJira } from "@forge/bridge";
 
+// Dynamically import Forge bridge only on client side
+// For local development without Forge, use mock
+let requestJira: any;
+if (typeof window !== "undefined") {
+  const isLocalDev = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  
+  if (isLocalDev) {
+    // Mock requestJira for local development
+    requestJira = async (url: string, options: any) => {
+      console.log("🧪 MOCK: Would send to Jira:", url, options);
+      return {
+        ok: true,
+        json: async () => ({ success: true, id: Math.random().toString() })
+      };
+    };
+  } else {
+    // Use real Forge bridge in Jira
+    requestJira = require("@forge/bridge").requestJira;
+  }
+}
 
 const editFormSchema = z.object({
   ticket: z.string().regex(/^[A-Z][A-Z0-9]+-\d+$/, "Invalid Jira ticket format"),

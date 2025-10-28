@@ -1,0 +1,6 @@
+# Forge ignore file - exclude these from bundling
+
+# Everything except static folder
+*
+!static/
+!static/**
