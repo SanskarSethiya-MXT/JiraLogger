@@ -39,6 +39,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Loader2, Trash2, Edit, AlertTriangle, CheckCircle, Clock, FileUp } from "lucide-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -46,6 +47,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { TicketSuggester } from "@/components/ticket-suggester";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "./ui/badge";
+import { format } from "date-fns";
 
 const editFormSchema = z.object({
   ticket: z.string().regex(/^[A-Z][A-Z0-9]+-\d+$/, "Invalid Jira ticket format"),
@@ -65,14 +67,15 @@ export function JiraLogger() {
   const [editingEntry, setEditingEntry] = useState<EntryWithStatus | null>(null);
   const [isLogging, setIsLogging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [dayStartTime, setDayStartTime] = useState("09:00");
 
   const editForm = useForm<z.infer<typeof editFormSchema>>({
     resolver: zodResolver(editFormSchema),
   });
 
-  const handleParse = () => {
+  const handleParse = (textToParse: string) => {
     try {
-      const parsedEntries = parseWorklog(worklogText);
+      const parsedEntries = parseWorklog(textToParse, dayStartTime);
       if (parsedEntries.length === 0) {
         toast({
           variant: "destructive",
@@ -118,15 +121,17 @@ export function JiraLogger() {
   const onEditSubmit = (values: z.infer<typeof editFormSchema>) => {
     if (!editingEntry) return;
 
+    // We can't recalculate start time here without re-parsing everything,
+    // so we just update the fields that are editable.
     const newTime = parseWorklog(
-      `${values.ticket}: ${values.description} (${values.timeSpent})`
+      `${values.ticket}: ${values.description} (${values.timeSpent})`, dayStartTime
     )[0]?.timeSpentInMinutes;
 
     if (!newTime) {
       editForm.setError("timeSpent", { message: "Invalid time format" });
       return;
     }
-
+    
     setEntries(
       entries.map((e) =>
         e.id === editingEntry.id
@@ -139,12 +144,30 @@ export function JiraLogger() {
           : e
       )
     );
+
+    // Re-run the parse logic with the updated entries to fix times
+    const updatedText = entries.map(e => {
+       const entryToUpdate = e.id === editingEntry.id ? {
+            ...e,
+            ticket: values.ticket,
+            description: values.description,
+            timeSpentInMinutes: newTime,
+       } : e;
+       return `${entryToUpdate.ticket}: ${entryToUpdate.description} ${formatMinutesToTime(entryToUpdate.timeSpentInMinutes)}`
+    }).join('\n');
+
+    handleParse(updatedText);
+
     handleEditClose();
     toast({ title: "Entry Updated" });
   };
 
   const handleDelete = (id: string) => {
-    setEntries(entries.filter((e) => e.id !== id));
+    const newEntries = entries.filter((e) => e.id !== id);
+    setEntries(newEntries);
+    // Re-calculate start times
+    const updatedText = newEntries.map(e => `${e.ticket}: ${e.description} ${formatMinutesToTime(e.timeSpentInMinutes)}`).join('\n');
+    handleParse(updatedText);
     toast({ title: "Entry Removed" });
   };
 
@@ -161,13 +184,20 @@ export function JiraLogger() {
       setIsLogging(true);
   
       const promises = entries.map(async (entry) => {
+        if (!entry.startTime) {
+          console.error(`Skipping entry ${entry.ticket} due to missing start time.`);
+          return { success: false, ticket: entry.ticket, error: "Missing start time" };
+        }
         try {
           setEntries(prev => prev.map(e => e.id === entry.id ? { ...e, logStatus: 'logging' } : e));
 
           const timeSpentInSeconds = entry.timeSpentInMinutes * 60;
+          const started = format(entry.startTime, "yyyy-MM-dd'T'HH:mm:ss.SSSZZ");
+          
           const body = JSON.stringify({
             comment: entry.description,
             timeSpentSeconds: timeSpentInSeconds,
+            started: started,
           });
   
           const response = await fetch(`/api/jira`, {
@@ -221,6 +251,7 @@ export function JiraLogger() {
       reader.onload = (e) => {
         const text = e.target?.result as string;
         setWorklogText(text);
+        handleParse(text); // Automatically parse after file read
       };
       reader.readAsText(file);
     }
@@ -251,20 +282,34 @@ export function JiraLogger() {
           <CardDescription>
             Paste your worklog text below or upload a .txt file. Use the format:
             <code className="ml-2 bg-muted p-1 rounded-sm text-sm">
-              TICKET-123: Did a thing: 1h 30m
+              TICKET-123: Did a thing (1h 30m)
             </code>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Textarea
-            value={worklogText}
-            onChange={(e) => setWorklogText(e.target.value)}
-            placeholder="16-10-2025 Thursday&#10;    MOL-1099: discussion with Mounir: 1h&#10;    MXT-5573: Madhusheree assisted with using VSCode: 1h 30m"
-            rows={8}
-            className="text-base"
-          />
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Textarea
+              value={worklogText}
+              onChange={(e) => setWorklogText(e.target.value)}
+              placeholder="16-10-2025 Thursday&#10;    MOL-1099: discussion with Mounir: 1h&#10;    MXT-5573: Madhusheree assisted with using VSCode: 1h 30m"
+              rows={8}
+              className="text-base md:col-span-3"
+            />
+             <div className="space-y-2">
+                <Label htmlFor="start-time">Day Start Time</Label>
+                <Input 
+                  id="start-time"
+                  type="time" 
+                  value={dayStartTime} 
+                  onChange={e => setDayStartTime(e.target.value)}
+                />
+                 <p className="text-sm text-muted-foreground">
+                    Set this before parsing to calculate correct start times for each entry.
+                </p>
+            </div>
+          </div>
           <div className="flex gap-2">
-            <Button onClick={handleParse}>Parse Worklog</Button>
+            <Button onClick={() => handleParse(worklogText)}>Parse Worklog</Button>
             <Button variant="outline" onClick={handleUploadClick}>
               <FileUp className="mr-2 h-4 w-4" />
               Upload .txt file
@@ -292,6 +337,7 @@ export function JiraLogger() {
                     <TableHead className="w-[40px]"></TableHead>
                     <TableHead className="w-[150px]">Ticket</TableHead>
                     <TableHead>Description</TableHead>
+                    <TableHead className="w-[120px]">Start Time</TableHead>
                     <TableHead className="w-[100px] text-right">Time</TableHead>
                     <TableHead className="w-[100px] text-right">Actions</TableHead>
                   </TableRow>
@@ -302,6 +348,9 @@ export function JiraLogger() {
                       <TableCell><StatusIcon status={entry.logStatus} /></TableCell>
                       <TableCell className="font-medium">{entry.ticket}</TableCell>
                       <TableCell>{entry.description}</TableCell>
+                       <TableCell>
+                        {entry.startTime ? format(entry.startTime, "HH:mm") : "N/A"}
+                      </TableCell>
                       <TableCell className="text-right">
                         {formatMinutesToTime(entry.timeSpentInMinutes)}
                       </TableCell>
@@ -433,3 +482,5 @@ export function JiraLogger() {
     </>
   );
 }
+
+    
