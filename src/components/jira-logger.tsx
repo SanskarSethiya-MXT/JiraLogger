@@ -54,7 +54,6 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format, addMinutes } from "date-fns";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 
@@ -286,7 +285,7 @@ export function JiraLogger() {
   
           // This is a placeholder for your actual Jira API call.
           // You will need to replace this with your own fetch logic and authentication.
-          const response = await fetch(`/api/jira/issue/${entry.issueIdOrKey}/worklog`, {
+          const response = await fetch(`/api/jira/issue/${entry.ticket}/worklog`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -366,33 +365,26 @@ export function JiraLogger() {
   return (
     <>
       <Card>
-        <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="item-1">
-                <AccordionTrigger className="px-6">
-                    <div className="flex items-center gap-2">
-                        <Settings className="h-5 w-5" />
-                        <span className="font-semibold">Settings</span>
-                    </div>
-                </AccordionTrigger>
-                <AccordionContent className="px-6 pt-2">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                          <Label htmlFor="start-time">Day Start Time</Label>
-                          <Input 
-                            id="start-time"
-                            type="time" 
-                            value={dayStartTime} 
-                            onChange={e => setDayStartTime(e.target.value)}
-                            className="w-auto"
-                          />
-                            <p className="text-sm text-muted-foreground">
-                            Set this before parsing to calculate correct start times for each entry.
-                          </p>
-                      </div>
-                  </div>
-                </AccordionContent>
-            </AccordionItem>
-        </Accordion>
+        <CardHeader>
+            <CardTitle>Settings</CardTitle>
+        </CardHeader>
+        <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                <div className="space-y-2">
+                    <Label htmlFor="start-time">Day Start Time</Label>
+                    <Input 
+                        id="start-time"
+                        type="time" 
+                        value={dayStartTime} 
+                        onChange={e => setDayStartTime(e.target.value)}
+                        className="w-auto"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                        The start time for the first entry of each day.
+                    </p>
+                </div>
+            </div>
+        </CardContent>
         
         <CardHeader>
           <CardTitle>Create Worklog</CardTitle>
@@ -614,3 +606,5 @@ Total: 1h 30m`}
     </>
   );
 }
+
+    
