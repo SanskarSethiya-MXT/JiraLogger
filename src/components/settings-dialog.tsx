@@ -26,7 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useJiraSettings } from "@/hooks/use-jira-settings";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const formSchema = z.object({
   url: z.string().url({ message: "Please enter a valid Jira URL." }),
@@ -41,13 +41,24 @@ export function SettingsDialog() {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    values: {
-      url: settings?.url || "",
-      email: settings?.email || "",
-      apiToken: settings?.apiToken || "",
+    defaultValues: {
+      url: "",
+      email: "",
+      apiToken: "",
     },
     disabled: !isLoaded,
   });
+  
+  useEffect(() => {
+    if (settings) {
+      form.reset({
+        url: settings.url || "",
+        email: settings.email || "",
+        apiToken: settings.apiToken || "",
+      });
+    }
+  }, [settings, form]);
+
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     saveSettings(values);
