@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo, Fragment } from "react";
+import { useState, useRef, useMemo, Fragment, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { formatMinutesToTime, parseWorklog } from "@/lib/parser";
 import type { WorklogEntry, JiraSettings } from "@/types";
@@ -23,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -45,7 +46,6 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { TicketSuggester } from "@/components/ticket-suggester";
-import { Badge } from "./ui/badge";
 import { format } from "date-fns";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -75,6 +75,7 @@ export function JiraLogger() {
   const [isLogging, setIsLogging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dayStartTime, setDayStartTime] = useState("09:00");
+  const [activeTab, setActiveTab] = useState<string>("");
   
   const settingsForm = useForm<z.infer<typeof settingsFormSchema>>({
     resolver: zodResolver(settingsFormSchema),
@@ -88,6 +89,28 @@ export function JiraLogger() {
   const editForm = useForm<z.infer<typeof editFormSchema>>({
     resolver: zodResolver(editFormSchema),
   });
+
+  const groupedEntries = useMemo(() => {
+    return entries.reduce((acc, entry) => {
+      const dateKey = entry.startTime ? format(entry.startTime, "dd-MM-yyyy") : 'Invalid Date';
+      if (!acc[dateKey]) {
+        acc[dateKey] = { entries: [], totalMinutes: 0 };
+      }
+      acc[dateKey].entries.push(entry);
+      acc[dateKey].totalMinutes += entry.timeSpentInMinutes;
+      return acc;
+    }, {} as Record<string, { entries: EntryWithStatus[], totalMinutes: number }>);
+  }, [entries]);
+
+  useEffect(() => {
+    const dates = Object.keys(groupedEntries);
+    if (dates.length > 0 && !dates.includes(activeTab)) {
+      setActiveTab(dates[0]);
+    } else if (dates.length === 0) {
+      setActiveTab("");
+    }
+  }, [groupedEntries, activeTab]);
+
 
   const handleParse = (textToParse: string) => {
     try {
@@ -117,23 +140,6 @@ export function JiraLogger() {
       console.error(error);
     }
   };
-  
-  const groupedEntries = useMemo(() => {
-    return entries.reduce((acc, entry) => {
-      const dateKey = entry.startTime ? format(entry.startTime, "dd-MM-yyyy") : 'Invalid Date';
-      if (!acc[dateKey]) {
-        acc[dateKey] = { entries: [], totalMinutes: 0 };
-      }
-      acc[dateKey].entries.push(entry);
-      acc[dateKey].totalMinutes += entry.timeSpentInMinutes;
-      return acc;
-    }, {} as Record<string, { entries: EntryWithStatus[], totalMinutes: number }>);
-  }, [entries]);
-
-  const totalMinutes = entries.reduce(
-    (sum, entry) => sum + entry.timeSpentInMinutes,
-    0
-  );
 
   const handleEditOpen = (entry: EntryWithStatus) => {
     setEditingEntry(entry);
@@ -437,75 +443,76 @@ Total: 1h 30m`}
               <CardDescription>Review your entries before logging them to Jira.</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[40px]"></TableHead>
-                    <TableHead className="w-[120px]">Date</TableHead>
-                    <TableHead className="w-[120px]">Start Time</TableHead>
-                    <TableHead className="w-[120px]">End Time</TableHead>
-                    <TableHead className="w-[150px]">Ticket</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead className="w-[100px] text-right">Time</TableHead>
-                    <TableHead className="w-[100px] text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.entries(groupedEntries).map(([date, group]) => (
-                    <Fragment key={date}>
-                      {group.entries.map((entry) => (
-                        <TableRow key={entry.id} className={entry.logStatus === 'error' ? 'bg-destructive/10' : ''}>
-                          <TableCell><StatusIcon status={entry.logStatus} /></TableCell>
-                          <TableCell>
-                            {entry.startTime ? format(entry.startTime, "dd-MM-yyyy") : "N/A"}
-                          </TableCell>
-                          <TableCell>
-                            {entry.startTime ? format(entry.startTime, "HH:mm") : "N/A"}
-                          </TableCell>
-                          <TableCell>
-                            {entry.endTime ? format(entry.endTime, "HH:mm") : "N/A"}
-                          </TableCell>
-                          <TableCell className="font-medium">{entry.ticket}</TableCell>
-                          <TableCell>{entry.description}</TableCell>
-                          <TableCell className="text-right">
-                            {formatMinutesToTime(entry.timeSpentInMinutes)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEditOpen(entry)}
-                              disabled={isLogging}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDelete(entry.id)}
-                              disabled={isLogging}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      <TableRow className="bg-muted/50 font-semibold">
-                          <TableCell colSpan={6} className="text-right">Total for {date}:</TableCell>
-                          <TableCell className="text-right">{formatMinutesToTime(group.totalMinutes)}</TableCell>
-                          <TableCell></TableCell>
-                      </TableRow>
-                    </Fragment>
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList>
+                  {Object.keys(groupedEntries).map(date => (
+                    <TabsTrigger key={date} value={date}>
+                      {date}
+                    </TabsTrigger>
                   ))}
-                </TableBody>
-                <UiTableFooter>
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-right font-bold text-lg">Grand Total:</TableCell>
-                    <TableCell className="text-right font-bold text-lg">{formatMinutesToTime(totalMinutes)}</TableCell>
-                    <TableCell></TableCell>
-                  </TableRow>
-                </UiTableFooter>
-              </Table>
+                </TabsList>
+
+                {Object.entries(groupedEntries).map(([date, group]) => (
+                  <TabsContent key={date} value={date}>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[40px]"></TableHead>
+                          <TableHead className="w-[120px]">Start Time</TableHead>
+                          <TableHead className="w-[120px]">End Time</TableHead>
+                          <TableHead className="w-[150px]">Ticket</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead className="w-[100px] text-right">Time</TableHead>
+                          <TableHead className="w-[100px] text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {group.entries.map((entry) => (
+                          <TableRow key={entry.id} className={entry.logStatus === 'error' ? 'bg-destructive/10' : ''}>
+                            <TableCell><StatusIcon status={entry.logStatus} /></TableCell>
+                            <TableCell>
+                              {entry.startTime ? format(entry.startTime, "HH:mm") : "N/A"}
+                            </TableCell>
+                            <TableCell>
+                              {entry.endTime ? format(entry.endTime, "HH:mm") : "N/A"}
+                            </TableCell>
+                            <TableCell className="font-medium">{entry.ticket}</TableCell>
+                            <TableCell>{entry.description}</TableCell>
+                            <TableCell className="text-right">
+                              {formatMinutesToTime(entry.timeSpentInMinutes)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditOpen(entry)}
+                                disabled={isLogging}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDelete(entry.id)}
+                                disabled={isLogging}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                      <UiTableFooter>
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-right font-bold text-lg">Total:</TableCell>
+                          <TableCell className="text-right font-bold text-lg">{formatMinutesToTime(group.totalMinutes)}</TableCell>
+                          <TableCell></TableCell>
+                        </TableRow>
+                      </UiTableFooter>
+                    </Table>
+                  </TabsContent>
+                ))}
+              </Tabs>
             </CardContent>
             <CardFooter className="flex justify-end">
               <Button onClick={handleLogWork} disabled={isLogging} size="lg">
