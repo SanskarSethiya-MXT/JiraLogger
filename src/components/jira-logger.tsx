@@ -2,7 +2,7 @@
 
 import { useState, useRef, useMemo, Fragment, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { formatMinutesToTime, parseWorklog } from "@/lib/parser";
+import { formatMinutesToTime, parseWorklog, parseTime, timeStringToMinutes } from "@/lib/parser";
 import type { WorklogEntry, JiraSettings } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,7 +46,7 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { TicketSuggester } from "@/components/ticket-suggester";
-import { format } from "date-fns";
+import { format, addMinutes } from "date-fns";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -158,51 +158,80 @@ export function JiraLogger() {
 
   const onEditSubmit = (values: z.infer<typeof editFormSchema>) => {
     if (!editingEntry) return;
-    
-    // Create a new text block to re-parse. We need to find which line corresponds to the entry.
-    // This is a bit brittle but should work for most cases.
-    const textLines = worklogText.split('\n');
-    const entryDate = editingEntry.startTime ? format(editingEntry.startTime, 'dd-MM-yyyy') : null;
-    let found = false;
 
-    const newText = textLines.map(line => {
-      // Very simplified check, might not be robust enough for complex logs
-      if (!found && line.includes(editingEntry.ticket) && line.includes(editingEntry.description.substring(0, 10))) {
-        found = true;
-        // Reconstruct the line based on the date context.
-        const dateLineRegex = /^\d{2}-\d{2}-\d{4}/;
-        if (entryDate && !dateLineRegex.test(line)) {
-           return `    ${values.ticket}: ${values.description} ${values.timeSpent}`;
-        }
-        return `${values.ticket}: ${values.description} ${values.timeSpent}`;
-      }
-      return line;
-    }).join('\n');
-    
-    let textToParse = worklogText;
-    if(found){
-      textToParse = newText;
-    } else {
-        // Fallback if we can't find the line: just rebuild from current state
-        textToParse = entries.map((e) => {
-            const date = e.startTime ? format(e.startTime, 'dd-MM-yyyy') : null;
-            if (e.id === editingEntry.id) {
-                return `${values.ticket}: ${values.description} ${values.timeSpent}`;
+    setEntries(prevEntries => {
+      const timeSpentInMinutes = timeStringToMinutes(values.timeSpent);
+      
+      const newEntries = prevEntries.map(e => 
+        e.id === editingEntry.id 
+          ? {
+              ...e, 
+              ticket: values.ticket,
+              description: values.description,
+              timeSpentInMinutes: timeSpentInMinutes,
             }
-            return `${e.ticket}: ${e.description} ${formatMinutesToTime(e.timeSpentInMinutes)}`;
-        }).join('\n');
-    }
-    
-    setWorklogText(textToParse);
-    handleParse(textToParse);
+          : e
+      );
+
+      // Recalculate start/end times
+      const dateGroups: Record<string, EntryWithStatus[]> = {};
+      newEntries.forEach(entry => {
+        const dateKey = entry.startTime ? format(entry.startTime, "dd-MM-yyyy") : 'Invalid Date';
+        if (!dateGroups[dateKey]) {
+          dateGroups[dateKey] = [];
+        }
+        dateGroups[dateKey].push(entry);
+      });
+
+      const updatedEntriesWithTimes: EntryWithStatus[] = [];
+      const [startHour, startMinute] = dayStartTime.split(':').map(Number);
+
+      Object.keys(dateGroups).sort().forEach(dateKey => {
+        let currentLogTime = parseTime(dateKey, startHour, startMinute);
+        dateGroups[dateKey].forEach(entry => {
+          const startTime = new Date(currentLogTime);
+          const endTime = addMinutes(startTime, entry.timeSpentInMinutes);
+          updatedEntriesWithTimes.push({ ...entry, startTime, endTime });
+          currentLogTime = endTime;
+        });
+      });
+
+      return updatedEntriesWithTimes;
+    });
 
     handleEditClose();
     toast({ title: "Entry Updated" });
   };
 
   const handleDelete = (id: string) => {
-    const newEntries = entries.filter((e) => e.id !== id);
-    setEntries(newEntries);
+    setEntries(prevEntries => {
+      const newEntries = prevEntries.filter((e) => e.id !== id);
+
+      // Recalculate start/end times after deletion
+      const dateGroups: Record<string, EntryWithStatus[]> = {};
+      newEntries.forEach(entry => {
+        const dateKey = entry.startTime ? format(entry.startTime, "dd-MM-yyyy") : 'Invalid Date';
+        if (!dateGroups[dateKey]) {
+          dateGroups[dateKey] = [];
+        }
+        dateGroups[dateKey].push(entry);
+      });
+
+      const updatedEntriesWithTimes: EntryWithStatus[] = [];
+      const [startHour, startMinute] = dayStartTime.split(':').map(Number);
+
+      Object.keys(dateGroups).sort().forEach(dateKey => {
+         let currentLogTime = parseTime(dateKey, startHour, startMinute);
+         dateGroups[dateKey].forEach(entry => {
+          const startTime = new Date(currentLogTime);
+          const endTime = addMinutes(startTime, entry.timeSpentInMinutes);
+          updatedEntriesWithTimes.push({ ...entry, startTime, endTime });
+          currentLogTime = endTime;
+        });
+      });
+
+      return updatedEntriesWithTimes;
+    });
     toast({ title: "Entry Removed" });
   };
 

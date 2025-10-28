@@ -1,7 +1,7 @@
 import { WorklogEntry } from "@/types";
 import { addMinutes, setHours, setMinutes, setSeconds, parse as parseDate } from "date-fns";
 
-const timeStringToMinutes = (timeString: string): number => {
+export const timeStringToMinutes = (timeString: string): number => {
   if (!timeString) return 0;
   let totalMinutes = 0;
   const hoursMatch = timeString.match(/(\d+\.?\d*)\s*h/);
@@ -24,6 +24,11 @@ const timeStringToMinutes = (timeString: string): number => {
   }
 
   return Math.round(totalMinutes);
+};
+
+export const parseTime = (dateKey: string, startHour: number, startMinute: number): Date => {
+  const date = parseDate(dateKey, 'dd-MM-yyyy', new Date());
+  return setSeconds(setMinutes(setHours(date, startHour), startMinute), 0);
 };
 
 export const parseWorklog = (text: string, dayStartTime: string): WorklogEntry[] => {
