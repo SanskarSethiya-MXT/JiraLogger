@@ -1,0 +1,38 @@
+
+modules:
+  'jira:projectPage':
+    - key: jiralogger-pro-hello-world-page
+      resource: main
+      title: JiraLogger Pro
+      icon: https://raw.githubusercontent.com/jiralogger-pro/logo/main/icon.svg
+  function:
+    - key: log-work
+      handler: index.logWork
+resources:
+  - key: main
+    path: src/app/page.tsx
+app:
+  id: 'ari:cloud:ecosystem::app/a5b6d915-7799-4452-9952-1678853e4142'
+permissions:
+  scopes:
+    - 'write:jira-work'
+    - 'read:jira-user'
+  content:
+    styles:
+      - 'unsafe-inline'
+    scripts:
+      - 'unsafe-inline'
+      - 'unsafe-eval'
+  external:
+    fetch:
+      backend:
+        - '*.atlassian.net'
+remotes:
+  - key: genkit-dev
+    baseUrl: 'http://localhost:3400'
+functions:
+  - key: testGenkitFlow
+    handler: index.testGenkitFlow
+    providers:
+      function:
+        - genkit-dev

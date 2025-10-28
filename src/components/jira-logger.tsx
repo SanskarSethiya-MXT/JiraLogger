@@ -1,3 +1,4 @@
+
 "use client";
 
 /**
@@ -7,7 +8,7 @@
  * It includes features like tabbing by date, undo/redo functionality, and direct API interaction with Jira.
  */
 
-import { useState, useRef, useMemo, Fragment, useEffect, useCallback } from "react";
+import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { formatMinutesToTime, parseWorklog, parseTime, timeStringToMinutes, regenerateWorklogText } from "@/lib/parser";
 import type { WorklogEntry } from "@/types";
@@ -63,12 +64,6 @@ const editFormSchema = z.object({
   timeSpent: z.string().min(1, "Time spent cannot be empty"),
 });
 
-const settingsFormSchema = z.object({
-  url: z.string().url({ message: "Please enter a valid Jira URL." }),
-  email: z.string().email({ message: "Please enter a valid email." }),
-  apiToken: z.string().min(1, { message: "API token cannot be empty." }),
-});
-
 type LogStatus = "pending" | "logging" | "success" | "error";
 
 type EntryWithStatus = WorklogEntry & { logStatus: LogStatus };
@@ -89,16 +84,6 @@ export function JiraLogger() {
 
   const canUndo = historyIndex > 0;
   const canRedo = historyIndex < history.length - 1;
-
-  
-  const settingsForm = useForm<z.infer<typeof settingsFormSchema>>({
-    resolver: zodResolver(settingsFormSchema),
-    defaultValues: {
-      url: "",
-      email: "",
-      apiToken: "",
-    },
-  });
 
   const editForm = useForm<z.infer<typeof editFormSchema>>({
     resolver: zodResolver(editFormSchema),
@@ -265,18 +250,6 @@ export function JiraLogger() {
 
 
   const handleLogWork = async (entriesToLog: EntryWithStatus[], buttonId: string) => {
-    const settings = settingsForm.getValues();
-    const isValid = await settingsForm.trigger();
-
-    if (!isValid) {
-        toast({
-          variant: "destructive",
-          title: "Jira Settings Invalid",
-          description: "Please check your Jira credentials in the settings section.",
-        });
-        return;
-    }
-  
       setIsLogging(true);
       setLoggingId(buttonId);
   
@@ -291,25 +264,42 @@ export function JiraLogger() {
           const timeSpentInSeconds = entry.timeSpentInMinutes * 60;
           const started = format(entry.startTime, "yyyy-MM-dd'T'HH:mm:ss.SSSZZ");
           
-          const body = JSON.stringify({
-            comment: entry.description,
+          const body = {
+            comment: {
+              type: "doc",
+              version: 1,
+              content: [
+                {
+                  type: "paragraph",
+                  content: [
+                    {
+                      type: "text",
+                      text: entry.description,
+                    },
+                  ],
+                },
+              ],
+            },
             timeSpentSeconds: timeSpentInSeconds,
             started: started,
-          });
+          };
   
-          const response = await fetch(`/api/jira`, {
-            method: "POST",
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              jiraUrl: `${settings.url}/rest/api/2/issue/${entry.ticket}/worklog`,
-              auth: `Basic ${btoa(`${settings.email}:${settings.apiToken}`)}`,
-              payload: body
-            })
+          // This is a placeholder for your actual Jira API call.
+          // You will need to replace this with your own fetch logic and authentication.
+          const response = await fetch(`/api/jira/issue/${entry.issueIdOrKey}/worklog`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                // Add your Authorization headers here
+            },
+            body: JSON.stringify(body)
           });
+
+
   
           if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.error || `Jira API responded with status ${response.status}`);
+            throw new Error(errorData.message || 'Failed to log work');
           }
           
           setEntries(prev => prev.map(e => e.id === entry.id ? { ...e, logStatus: 'success' } : e));
@@ -328,7 +318,7 @@ export function JiraLogger() {
         toast({
             variant: "destructive",
             title: "Some Worklogs Failed",
-            description: `${failures.length} out of ${entriesToLog.length} entries failed to log.`,
+            description: `${failures.length} out of ${entriesToLog.length} entries failed to log. Check console for details.`,
         });
       } else {
         toast({
@@ -372,83 +362,34 @@ export function JiraLogger() {
     }
   };
 
-  const isSettingsEmpty = !settingsForm.watch('url') && !settingsForm.watch('email') && !settingsForm.watch('apiToken');
 
   return (
     <>
       <Card>
-        <Accordion type="single" collapsible className="w-full" defaultValue={isSettingsEmpty ? "item-1" : undefined}>
+        <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="item-1">
                 <AccordionTrigger className="px-6">
                     <div className="flex items-center gap-2">
                         <Settings className="h-5 w-5" />
-                        <span className="font-semibold">Jira Settings</span>
+                        <span className="font-semibold">Settings</span>
                     </div>
                 </AccordionTrigger>
                 <AccordionContent className="px-6 pt-2">
-                  <p className="text-sm text-muted-foreground mb-4">
-                      Enter your Jira credentials to log your work. These are not saved.
-                  </p>
-                  <Form {...settingsForm}>
-                      <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={(e) => e.preventDefault()}>
-                        <div className="space-y-4">
-                          <FormField
-                          control={settingsForm.control}
-                          name="url"
-                          render={({ field }) => (
-                              <FormItem>
-                              <FormLabel>Jira URL</FormLabel>
-                              <FormControl>
-                                  <Input placeholder="https://your-company.atlassian.net" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                              </FormItem>
-                          )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                          <Label htmlFor="start-time">Day Start Time</Label>
+                          <Input 
+                            id="start-time"
+                            type="time" 
+                            value={dayStartTime} 
+                            onChange={e => setDayStartTime(e.target.value)}
+                            className="w-auto"
                           />
-                          <FormField
-                          control={settingsForm.control}
-                          name="email"
-                          render={({ field }) => (
-                              <FormItem>
-                              <FormLabel>Email</FormLabel>
-                              <FormControl>
-                                  <Input placeholder="you@example.com" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                              </FormItem>
-                          )}
-                          />
-                          <FormField
-                          control={settingsForm.control}
-                          name="apiToken"
-                          render={({ field }) => (
-                              <FormItem>
-                              <FormLabel>API Token</FormLabel>
-                              <FormControl>
-                                  <Input type="password" placeholder="Your Jira API Token" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                              </FormItem>
-                          )}
-                          />
-                        </div>
-                        <div className="space-y-4">
-                          <FormItem>
-                            <Label htmlFor="start-time">Day Start Time</Label>
-                            <Input 
-                              id="start-time"
-                              type="time" 
-                              value={dayStartTime} 
-                              onChange={e => setDayStartTime(e.target.value)}
-                              className="w-full"
-                            />
-                             <p className="text-sm text-muted-foreground">
-                              Set the start time for your workday to ensure accurate log timestamps.
-                            </p>
-                          </FormItem>
-                        </div>
-                      </form>
-                  </Form>
+                            <p className="text-sm text-muted-foreground">
+                            Set this before parsing to calculate correct start times for each entry.
+                          </p>
+                      </div>
+                  </div>
                 </AccordionContent>
             </AccordionItem>
         </Accordion>
@@ -607,16 +548,6 @@ Total: 1h 30m`}
           </>
         )}
       </Card>
-
-      {isSettingsEmpty && !isLogging && entries.length === 0 && (
-        <Alert variant="default" className="mt-4 border-primary">
-          <AlertTriangle className="h-4 w-4 text-primary" />
-          <AlertTitle>Action Required</AlertTitle>
-          <AlertDescription>
-            Please configure your Jira credentials in the settings above to log your work.
-          </AlertDescription>
-        </Alert>
-      )}
 
       <Dialog open={!!editingEntry} onOpenChange={(isOpen) => !isOpen && handleEditClose()}>
         <DialogContent>

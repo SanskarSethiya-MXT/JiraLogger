@@ -1,5 +1,11 @@
+
+"use client";
+
+import React from "react";
 import { JiraLogger } from "@/components/jira-logger";
 
-export default function Home() {
+function App() {
   return <JiraLogger />;
 }
+
+export default App;
