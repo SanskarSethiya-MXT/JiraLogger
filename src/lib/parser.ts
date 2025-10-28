@@ -1,5 +1,5 @@
 import { WorklogEntry } from "@/types";
-import { addMinutes, setHours, setMinutes, setSeconds, startOfToday } from "date-fns";
+import { addMinutes, setHours, setMinutes, setSeconds, parse as parseDate } from "date-fns";
 
 const timeStringToMinutes = (timeString: string): number => {
   if (!timeString) return 0;
@@ -31,22 +31,30 @@ export const parseWorklog = (text: string, dayStartTime: string): WorklogEntry[]
   const lines = text.replace(/\r\n/g, '\n').split("\n");
 
   const [startHour, startMinute] = dayStartTime.split(':').map(Number);
-  let currentLogTime = setSeconds(setMinutes(setHours(startOfToday(), startHour || 9), startMinute || 0), 0);
+  
+  let currentDate: Date | null = null;
+  let currentLogTime: Date | null = null;
 
-  // Regex inspired by the python script to be more robust.
-  // It captures: 1. Issue Key, 2. Optional text in parens, 3. Description, 4. Time
+  const dateLineRegex = /^(\d{2}-\d{2}-\d{4})/;
   const entryRegex = /^\s*([A-Z][A-Z0-9]+-\d+)\s*(?:\(([^)]+)\))?:\s*(.*?)\s*:\s*(.+)$/;
+  const simpleEntryRegex = /^\s*([A-Z][A-Z0-9]+-\d+)\s*(?:\(([^)]+)\))?:\s*(.*?)\s+([\d.\shm]+)$/;
+
 
   lines.forEach((line, index) => {
     const trimmedLine = line.trim();
     if (!trimmedLine) return;
 
-    const isDateLine = /^\d{2}-\d{2}-\d{4}/.test(trimmedLine);
-    const isTotalLine = /^Total:/.test(trimmedLine);
-    if(isDateLine || isTotalLine) return;
+    const dateMatch = trimmedLine.match(dateLineRegex);
+    if (dateMatch) {
+        currentDate = parseDate(dateMatch[1], 'dd-MM-yyyy', new Date());
+        currentLogTime = setSeconds(setMinutes(setHours(currentDate, startHour || 9), startMinute || 0), 0);
+        return;
+    }
+    
+    if (!currentLogTime || !currentDate) return;
 
-    // A simpler regex for entries without the extra colon in description
-    const simpleEntryRegex = /^\s*([A-Z][A-Z0-9]+-\d+)\s*(?:\(([^)]+)\))?:\s*(.*?)\s+([\d.\shm]+)$/;
+    const isTotalLine = /^Total:/.test(trimmedLine);
+    if(isTotalLine) return;
 
     let match = trimmedLine.match(entryRegex);
     let timeStringFromMatch: string | undefined;
@@ -56,27 +64,34 @@ export const parseWorklog = (text: string, dayStartTime: string): WorklogEntry[]
     } else {
         match = trimmedLine.match(simpleEntryRegex);
         if(match){
-             // Check if last part looks like time
             const potentialTime = match[4];
             const lastPartIsTime = /(\d+h|\d+m)/.test(potentialTime);
             if (lastPartIsTime) {
                 timeStringFromMatch = potentialTime;
             } else {
-                // It's not a valid time, so this regex didn't work.
                 match = null;
             }
         }
     }
 
     if (match && timeStringFromMatch) {
-        const [, ticket, context, descriptionPart1, timePart] = match;
+        const [, ticket, context, descriptionPart1] = match;
         const timeString = timeStringFromMatch.trim();
-        const description = (context ? `${context}: ` : '') + descriptionPart1.trim();
+        let description = descriptionPart1.trim();
+        if (context) {
+            // If the simple regex was used, time might be in description.
+            const timeIndex = description.lastIndexOf(timeString);
+            if(timeIndex > -1){
+                description = description.substring(0, timeIndex).trim();
+            }
+            description = `${context}: ${description}`;
+        }
+
 
         const timeSpentInMinutes = timeStringToMinutes(timeString);
 
         if (timeSpentInMinutes > 0) {
-            const entryStartTime = new Date(currentLogTime);
+            const entryStartTime = new Date(currentLogTime!);
             const entryEndTime = addMinutes(entryStartTime, timeSpentInMinutes);
             entries.push({
                 id: `${Date.now()}-${index}`,

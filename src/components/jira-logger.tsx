@@ -310,6 +310,7 @@ export function JiraLogger() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[40px]"></TableHead>
+                    <TableHead className="w-[120px]">Date</TableHead>
                     <TableHead className="w-[150px]">Ticket</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead className="w-[120px]">Start Time</TableHead>
@@ -322,6 +323,9 @@ export function JiraLogger() {
                   {entries.map((entry) => (
                     <TableRow key={entry.id} className={entry.logStatus === 'error' ? 'bg-destructive/10' : ''}>
                       <TableCell><StatusIcon status={entry.logStatus} /></TableCell>
+                      <TableCell>
+                        {entry.startTime ? format(entry.startTime, "dd-MM-yyyy") : "N/A"}
+                      </TableCell>
                       <TableCell className="font-medium">{entry.ticket}</TableCell>
                       <TableCell>{entry.description}</TableCell>
                        <TableCell>
