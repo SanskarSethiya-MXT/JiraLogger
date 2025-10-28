@@ -31,6 +31,3 @@ permissions:
     fetch:
       backend:
         - address: "*.atlassian.net"
-        - address: generativelanguage.googleapis.com
-        - address: localhost:9002
-        - address: 127.0.0.1:9002

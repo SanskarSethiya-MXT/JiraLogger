@@ -5,6 +5,10 @@
   "author": "SanskarSethiya-MXT",
   "license": "MIT",
   "private": true,
+  "overrides": {
+    "react": "$react",
+    "react-dom": "$react-dom"
+  },
   "scripts": {
     "dev": "next dev --turbopack -p 9002",
     "build": "set NODE_ENV=production && next build",
