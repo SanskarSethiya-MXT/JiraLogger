@@ -2,9 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { useJiraSettings } from "@/hooks/use-jira-settings";
 import { formatMinutesToTime, parseWorklog } from "@/lib/parser";
-import type { WorklogEntry } from "@/types";
+import type { WorklogEntry, JiraSettings } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -45,10 +44,11 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { TicketSuggester } from "@/components/ticket-suggester";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "./ui/badge";
 import { format } from "date-fns";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
 
 const editFormSchema = z.object({
   ticket: z.string().regex(/^[A-Z][A-Z0-9]+-\d+$/, "Invalid Jira ticket format"),
@@ -68,7 +68,6 @@ type EntryWithStatus = WorklogEntry & { logStatus: LogStatus };
 
 export function JiraLogger() {
   const { toast } = useToast();
-  const { settings, saveSettings, isLoaded } = useJiraSettings();
   const [worklogText, setWorklogText] = useState("");
   const [entries, setEntries] = useState<EntryWithStatus[]>([]);
   const [editingEntry, setEditingEntry] = useState<EntryWithStatus | null>(null);
@@ -83,22 +82,7 @@ export function JiraLogger() {
       email: "",
       apiToken: "",
     },
-    disabled: !isLoaded,
   });
-
-  useEffect(() => {
-    if (isLoaded && settings) {
-      settingsForm.reset(settings);
-    }
-  }, [isLoaded, settings, settingsForm]);
-
-  function onSettingsSubmit(values: z.infer<typeof settingsFormSchema>) {
-    saveSettings(values);
-    toast({
-      title: "Settings Saved",
-      description: "Your Jira credentials have been updated.",
-    });
-  }
 
   const editForm = useForm<z.infer<typeof editFormSchema>>({
     resolver: zodResolver(editFormSchema),
@@ -176,14 +160,17 @@ export function JiraLogger() {
   };
 
   const handleLogWork = async () => {
-    if (!settings?.url || !settings?.email || !settings.apiToken) {
+    const settings = settingsForm.getValues();
+    const isValid = await settingsForm.trigger();
+
+    if (!isValid) {
         toast({
           variant: "destructive",
-          title: "Jira Settings Missing",
-          description: "Please configure your Jira credentials in the settings.",
+          title: "Jira Settings Invalid",
+          description: "Please check your Jira credentials in the settings section.",
         });
         return;
-      }
+    }
   
       setIsLogging(true);
   
@@ -278,10 +265,12 @@ export function JiraLogger() {
     }
   };
 
+  const isSettingsEmpty = !settingsForm.watch('url') && !settingsForm.watch('email') && !settingsForm.watch('apiToken');
+
   return (
     <>
       <Card>
-        <Accordion type="single" collapsible className="w-full" defaultValue={!settings ? "item-1" : undefined}>
+        <Accordion type="single" collapsible className="w-full" defaultValue={isSettingsEmpty ? "item-1" : undefined}>
             <AccordionItem value="item-1">
                 <AccordionTrigger className="px-6">
                     <div className="flex items-center gap-2">
@@ -291,10 +280,10 @@ export function JiraLogger() {
                 </AccordionTrigger>
                 <AccordionContent className="px-6 pt-2">
                 <p className="text-sm text-muted-foreground mb-4">
-                    Enter your Jira credentials to log your work. Your credentials are saved only in your browser.
+                    Enter your Jira credentials to log your work. These are not saved.
                 </p>
                 <Form {...settingsForm}>
-                    <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-4">
+                    <form className="space-y-4">
                         <FormField
                         control={settingsForm.control}
                         name="url"
@@ -334,9 +323,6 @@ export function JiraLogger() {
                             </FormItem>
                         )}
                         />
-                        <Button type="submit" disabled={settingsForm.formState.isSubmitting}>
-                            Save Settings
-                        </Button>
                     </form>
                 </Form>
                 </AccordionContent>
@@ -455,7 +441,7 @@ export function JiraLogger() {
               <Badge variant="secondary" className="text-base">
                 Total: {formatMinutesToTime(totalMinutes)}
               </Badge>
-              <Button onClick={handleLogWork} disabled={isLogging || !isLoaded}>
+              <Button onClick={handleLogWork} disabled={isLogging}>
                 {isLogging ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
@@ -466,26 +452,15 @@ export function JiraLogger() {
         )}
       </Card>
 
-      {!isLoaded && (
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Loading Settings</AlertTitle>
-          <AlertDescription>
-            Loading your Jira configuration...
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {isLoaded && !settings && (
-        <Alert variant="destructive">
+      {isSettingsEmpty && (
+        <Alert variant="destructive" className="mt-4">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Action Required</AlertTitle>
           <AlertDescription>
-            Please configure your Jira credentials in the settings to log your work.
+            Please configure your Jira credentials in the settings above to log your work.
           </AlertDescription>
         </Alert>
       )}
-
 
       <Dialog open={!!editingEntry} onOpenChange={(isOpen) => !isOpen && handleEditClose()}>
         <DialogContent>
