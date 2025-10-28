@@ -390,7 +390,8 @@ export function JiraLogger() {
                       Enter your Jira credentials to log your work. These are not saved.
                   </p>
                   <Form {...settingsForm}>
-                      <form className="space-y-4 max-w-md" onSubmit={(e) => e.preventDefault()}>
+                      <form className="grid grid-cols-1 md:grid-cols-2 gap-4" onSubmit={(e) => e.preventDefault()}>
+                        <div className="space-y-4">
                           <FormField
                           control={settingsForm.control}
                           name="url"
@@ -430,6 +431,8 @@ export function JiraLogger() {
                               </FormItem>
                           )}
                           />
+                        </div>
+                        <div className="space-y-4">
                           <FormItem>
                             <Label htmlFor="start-time">Day Start Time</Label>
                             <Input 
@@ -437,12 +440,13 @@ export function JiraLogger() {
                               type="time" 
                               value={dayStartTime} 
                               onChange={e => setDayStartTime(e.target.value)}
-                              className="w-min"
+                              className="w-full"
                             />
                              <p className="text-sm text-muted-foreground">
                               Set the start time for your workday to ensure accurate log timestamps.
                             </p>
                           </FormItem>
+                        </div>
                       </form>
                   </Form>
                 </AccordionContent>
