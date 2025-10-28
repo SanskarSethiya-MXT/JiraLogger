@@ -17,11 +17,17 @@ const timeStringToMinutes = (timeString: string): number => {
 
 export const parseWorklog = (text: string): WorklogEntry[] => {
   const entries: WorklogEntry[] = [];
-  const lines = text.split("\n");
-  // Regex for jira ticket, description and time.
-  // It will match lines starting with an optional tab/space, then a ticket, a colon,
-  // a description (which can contain anything, including parentheses), and finally a time string at the end.
-  const regex = /^\s*([A-Z][A-Z0-9]+-\d+)\s*:\s*(.*)\s+([\d.\s]+[hm])\s*$/;
+  // Normalize line endings to handle different file formats (Windows/Unix)
+  const lines = text.replace(/\r\n/g, '\n').split("\n");
+  
+  // Regex:
+  // - Starts with optional whitespace
+  // - Captures a Jira ticket key (e.g., MXT-5573)
+  // - Captures an optional parenthesized group (e.g., (Internal meeting))
+  // - A colon separator
+  // - Captures the rest of the description
+  // - Ends with a time string (e.g., 1h 30m)
+  const regex = /^\s*([A-Z][A-Z0-9]+-\d+)\s*(?:\(([^)]+)\))?:\s*(.*?)\s+([\d.\s]+[hm])\s*$/;
 
   lines.forEach((line, index) => {
     const trimmedLine = line.trim();
@@ -35,19 +41,21 @@ export const parseWorklog = (text: string): WorklogEntry[] => {
     const match = line.match(regex);
 
     if (match) {
-      const [, ticket, descriptionWithTime, timeString] = match;
-      const description = descriptionWithTime.replace(new RegExp(`:\\s*${timeString}\\s*`), '').trim();
+      const [, ticket, group, descriptionText, timeString] = match;
+      
+      let description = descriptionText.trim();
+      if (group) {
+        description = `(${group.trim()}) ${description}`;
+      }
 
-      if (timeString) {
-        const timeSpentInMinutes = timeStringToMinutes(timeString);
-        if (timeSpentInMinutes > 0) {
-          entries.push({
-            id: `${Date.now()}-${index}`,
-            ticket,
-            description,
-            timeSpentInMinutes,
-          });
-        }
+      const timeSpentInMinutes = timeStringToMinutes(timeString);
+      if (timeSpentInMinutes > 0) {
+        entries.push({
+          id: `${Date.now()}-${index}`,
+          ticket,
+          description: description,
+          timeSpentInMinutes,
+        });
       }
     }
   });
