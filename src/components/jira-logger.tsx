@@ -45,7 +45,6 @@ import { Loader2, Trash2, Edit, AlertTriangle, CheckCircle, Clock, FileUp, Setti
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { TicketSuggester } from "@/components/ticket-suggester";
 import { format, addMinutes } from "date-fns";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -109,6 +108,8 @@ export function JiraLogger() {
   useEffect(() => {
     if (entries.length > 0) {
       setWorklogText(regenerateWorklogText(entries));
+    } else {
+        setWorklogText("");
     }
   }, [entries]);
 
@@ -437,7 +438,7 @@ export function JiraLogger() {
                         className="w-min"
                       />
                       <p className="text-sm text-muted-foreground">
-                          Set the start time for your workday to ensure accurate log timestamps.
+                        Set the start time for your workday to ensure accurate log timestamps.
                       </p>
                   </div>
                 </div>
@@ -573,7 +574,7 @@ Total: 1h 30m`}
                       </TableBody>
                       <UiTableFooter>
                         <TableRow>
-                          <TableCell colSpan={6} className="font-bold">Total:</TableCell>
+                          <TableCell colSpan={7} className="font-bold">Total:</TableCell>
                           <TableCell className="text-right font-bold">{formatMinutesToTime(group.totalMinutes)}</TableCell>
                           <TableCell className="text-right">
                             <Button onClick={() => handleLogWork(group.entries, date)} disabled={isLogging} size="sm">
@@ -649,10 +650,6 @@ Total: 1h 30m`}
                   </FormItem>
                 )}
               />
-              <TicketSuggester 
-                description={editForm.watch('description')} 
-                onTicketSelect={(ticket) => editForm.setValue('ticket', ticket)} 
-              />
               <FormField
                 control={editForm.control}
                 name="timeSpent"
@@ -679,5 +676,3 @@ Total: 1h 30m`}
     </>
   );
 }
-
-    
