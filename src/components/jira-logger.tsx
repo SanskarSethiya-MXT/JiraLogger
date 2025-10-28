@@ -279,52 +279,69 @@ export function JiraLogger() {
                     </div>
                 </AccordionTrigger>
                 <AccordionContent className="px-6 pt-2">
-                <p className="text-sm text-muted-foreground mb-4">
-                    Enter your Jira credentials to log your work. These are not saved.
-                </p>
-                <Form {...settingsForm}>
-                    <form className="space-y-4">
-                        <FormField
-                        control={settingsForm.control}
-                        name="url"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Jira URL</FormLabel>
-                            <FormControl>
-                                <Input placeholder="https://your-company.atlassian.net" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={settingsForm.control}
-                        name="email"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Email</FormLabel>
-                            <FormControl>
-                                <Input placeholder="you@example.com" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={settingsForm.control}
-                        name="apiToken"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>API Token</FormLabel>
-                            <FormControl>
-                                <Input type="password" placeholder="Your Jira API Token" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                    </form>
-                </Form>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-4">
+                        Enter your Jira credentials to log your work. These are not saved.
+                    </p>
+                    <Form {...settingsForm}>
+                        <form className="space-y-4">
+                            <FormField
+                            control={settingsForm.control}
+                            name="url"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Jira URL</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="https://your-company.atlassian.net" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                            <FormField
+                            control={settingsForm.control}
+                            name="email"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Email</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="you@example.com" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                            <FormField
+                            control={settingsForm.control}
+                            name="apiToken"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>API Token</FormLabel>
+                                <FormControl>
+                                    <Input type="password" placeholder="Your Jira API Token" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                            />
+                        </form>
+                    </Form>
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="start-time">Day Start Time</Label>
+                      <Input 
+                        id="start-time"
+                        type="time" 
+                        value={dayStartTime} 
+                        onChange={e => setDayStartTime(e.target.value)}
+                        className="w-min"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                          Set this before parsing to calculate correct start times for each entry. It defaults to 09:00.
+                      </p>
+                  </div>
+                </div>
                 </AccordionContent>
             </AccordionItem>
         </Accordion>
@@ -339,26 +356,14 @@ export function JiraLogger() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid">
             <Textarea
               value={worklogText}
               onChange={(e) => setWorklogText(e.target.value)}
               placeholder="16-10-2025 Thursday&#10;    MOL-1099: discussion with Mounir and looked into logs: 1h&#10;    MXT-5573 (Internal meeting): Madhusheree assisted with using VSCode: 1h 30m"
               rows={8}
-              className="text-base md:col-span-3"
+              className="text-base"
             />
-             <div className="space-y-2">
-                <Label htmlFor="start-time">Day Start Time</Label>
-                <Input 
-                  id="start-time"
-                  type="time" 
-                  value={dayStartTime} 
-                  onChange={e => setDayStartTime(e.target.value)}
-                />
-                 <p className="text-sm text-muted-foreground">
-                    Set this before parsing to calculate correct start times for each entry.
-                </p>
-            </div>
           </div>
           <div className="flex gap-2">
             <Button onClick={() => handleParse(worklogText)}>Parse Worklog</Button>
@@ -409,7 +414,7 @@ export function JiraLogger() {
                         {entry.startTime ? format(entry.startTime, "HH:mm") : "N/A"}
                       </TableCell>
                       <TableCell>
-                        {entry.endTime ? format(entry.endTime, "HH:mm") : "N/A"}
+                        {entry.endTime ? format(entry.endTime, "HH:mm") : "N'A"}
                       </TableCell>
                       <TableCell className="text-right">
                         {formatMinutesToTime(entry.timeSpentInMinutes)}
