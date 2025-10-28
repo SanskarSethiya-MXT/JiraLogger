@@ -1,5 +1,5 @@
 import { WorklogEntry } from "@/types";
-import { addMinutes, setHours, setMinutes, setSeconds, parse as parseDate } from "date-fns";
+import { addMinutes, setHours, setMinutes, setSeconds, parse as parseDate, format } from "date-fns";
 
 export const timeStringToMinutes = (timeString: string): number => {
   if (!timeString) return 0;
@@ -126,4 +126,29 @@ export const formatMinutesToTime = (minutes: number): string => {
     result += `${result ? ' ' : ''}${m}m`;
   }
   return result;
+};
+
+
+export const regenerateWorklogText = (entries: WorklogEntry[]): string => {
+  const groupedByDate = entries.reduce((acc, entry) => {
+    const dateKey = entry.startTime ? format(entry.startTime, "dd-MM-yyyy EEEE") : 'Invalid Date';
+    if (!acc[dateKey]) {
+      acc[dateKey] = [];
+    }
+    acc[dateKey].push(entry);
+    return acc;
+  }, {} as Record<string, WorklogEntry[]>);
+
+  let newText = "";
+  for (const dateKey in groupedByDate) {
+    newText += `${dateKey.split(' ')[0]} ${dateKey.split(' ')[1]}\n`;
+    let totalMinutes = 0;
+    groupedByDate[dateKey].forEach(entry => {
+      newText += `    ${entry.ticket}: ${entry.description}: ${formatMinutesToTime(entry.timeSpentInMinutes)}\n`;
+      totalMinutes += entry.timeSpentInMinutes;
+    });
+    newText += `Total: ${formatMinutesToTime(totalMinutes)}\n\n`;
+  }
+
+  return newText.trim();
 };

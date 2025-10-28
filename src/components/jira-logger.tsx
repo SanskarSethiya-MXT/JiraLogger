@@ -2,7 +2,7 @@
 
 import { useState, useRef, useMemo, Fragment, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { formatMinutesToTime, parseWorklog, parseTime, timeStringToMinutes } from "@/lib/parser";
+import { formatMinutesToTime, parseWorklog, parseTime, timeStringToMinutes, regenerateWorklogText } from "@/lib/parser";
 import type { WorklogEntry, JiraSettings } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -161,9 +161,6 @@ export function JiraLogger() {
 
     setEntries(prevEntries => {
         const timeSpentInMinutes = timeStringToMinutes(values.timeSpent);
-        const entryDateKey = editingEntry.startTime ? format(editingEntry.startTime, 'dd-MM-yyyy') : 'Invalid Date';
-        const [startHour, startMinute] = dayStartTime.split(':').map(Number);
-        
         let newEntries = [...prevEntries];
         const entryIndex = newEntries.findIndex(e => e.id === editingEntry.id);
         
@@ -176,20 +173,10 @@ export function JiraLogger() {
             };
         }
 
-        // Recalculate times only for the affected date
-        let currentLogTime = parseTime(entryDateKey, startHour, startMinute);
-        newEntries = newEntries.map(entry => {
-            const currentEntryDateKey = entry.startTime ? format(entry.startTime, 'dd-MM-yyyy') : 'Invalid Date';
-            if (currentEntryDateKey === entryDateKey) {
-                const startTime = new Date(currentLogTime);
-                const endTime = addMinutes(startTime, entry.timeSpentInMinutes);
-                currentLogTime = endTime;
-                return { ...entry, startTime, endTime };
-            }
-            return entry;
-        });
-
-        return newEntries;
+        // Recalculate times for all entries
+        const recalculatedEntries = recalculateEntryTimes(newEntries, dayStartTime);
+        setWorklogText(regenerateWorklogText(recalculatedEntries));
+        return recalculatedEntries;
     });
 
     handleEditClose();
@@ -200,25 +187,43 @@ export function JiraLogger() {
   const handleDelete = (id: string, dateKey: string) => {
     setEntries(prevEntries => {
         const newEntries = prevEntries.filter(e => e.id !== id);
-        const [startHour, startMinute] = dayStartTime.split(':').map(Number);
         
-        // Recalculate times only for the affected date
-        let currentLogTime = parseTime(dateKey, startHour, startMinute);
-        const updatedEntries = newEntries.map(entry => {
-            const currentEntryDateKey = entry.startTime ? format(entry.startTime, 'dd-MM-yyyy') : 'Invalid Date';
-            if (currentEntryDateKey === dateKey) {
-                const startTime = new Date(currentLogTime);
-                const endTime = addMinutes(startTime, entry.timeSpentInMinutes);
-                currentLogTime = endTime;
-                return { ...entry, startTime, endTime };
-            }
-            return entry;
-        });
-
-        return updatedEntries;
+        // Recalculate times for all entries
+        const recalculatedEntries = recalculateEntryTimes(newEntries, dayStartTime);
+        setWorklogText(regenerateWorklogText(recalculatedEntries));
+        return recalculatedEntries;
     });
     toast({ title: "Entry Removed" });
   };
+  
+  const recalculateEntryTimes = (allEntries: EntryWithStatus[], startTimeStr: string): EntryWithStatus[] => {
+    const entriesByDate: Record<string, EntryWithStatus[]> = allEntries.reduce((acc, entry) => {
+        const dateKey = entry.startTime ? format(entry.startTime, "dd-MM-yyyy") : 'Invalid Date';
+        if (!acc[dateKey]) {
+            acc[dateKey] = [];
+        }
+        acc[dateKey].push(entry);
+        return acc;
+    }, {} as Record<string, EntryWithStatus[]>);
+
+    const [startHour, startMinute] = startTimeStr.split(':').map(Number);
+    let finalEntries: EntryWithStatus[] = [];
+
+    Object.keys(entriesByDate).sort().forEach(dateKey => {
+        let currentLogTime = parseTime(dateKey, startHour, startMinute);
+        const dayEntries = entriesByDate[dateKey];
+
+        const updatedDayEntries = dayEntries.map(entry => {
+            const startTime = new Date(currentLogTime);
+            const endTime = addMinutes(startTime, entry.timeSpentInMinutes);
+            currentLogTime = endTime;
+            return { ...entry, startTime, endTime };
+        });
+        finalEntries.push(...updatedDayEntries);
+    });
+
+    return finalEntries;
+  }
 
 
   const handleLogWork = async (entriesToLog: EntryWithStatus[], buttonId: string) => {
