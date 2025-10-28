@@ -83,6 +83,12 @@ export const parseWorklog = (text: string, dayStartTime: string): WorklogEntry[]
         const [, ticket, context, descriptionPart1] = match;
         const timeString = timeStringFromMatch.trim();
         let description = descriptionPart1.trim();
+
+        // Handle the case where description ends with a colon
+        if (description.endsWith(':')) {
+            description = description.slice(0, -1).trim();
+        }
+
         if (context) {
             // If the simple regex was used, time might be in description.
             const timeIndex = description.lastIndexOf(timeString);

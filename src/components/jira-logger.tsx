@@ -407,7 +407,7 @@ export function JiraLogger() {
                         className="w-min"
                       />
                       <p className="text-sm text-muted-foreground">
-                          Set this before parsing to calculate correct start times for each entry. It defaults to 09:00.
+                          This time is used as the starting point for the first log entry of each day.
                       </p>
                   </div>
                 </div>
@@ -420,7 +420,7 @@ export function JiraLogger() {
           <CardDescription>
             Paste your worklog text below or upload a .txt file. The format is:
             <code className="ml-2 bg-muted p-1 rounded-sm text-sm">
-              TICKET-123: Description 1h 30m
+              TICKET-123: Description: 1h 30m
             </code>
           </CardDescription>
         </CardHeader>
