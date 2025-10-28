@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useJiraSettings } from "@/hooks/use-jira-settings";
 import { formatMinutesToTime, parseWorklog } from "@/lib/parser";
@@ -39,7 +39,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Loader2, Trash2, Edit, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { Loader2, Trash2, Edit, AlertTriangle, CheckCircle, Clock, FileUp } from "lucide-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -64,6 +64,7 @@ export function JiraLogger() {
   const [entries, setEntries] = useState<EntryWithStatus[]>([]);
   const [editingEntry, setEditingEntry] = useState<EntryWithStatus | null>(null);
   const [isLogging, setIsLogging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const editForm = useForm<z.infer<typeof editFormSchema>>({
     resolver: zodResolver(editFormSchema),
@@ -212,6 +213,22 @@ export function JiraLogger() {
   
       setIsLogging(false);
   };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        setWorklogText(text);
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
   
   const StatusIcon = ({ status }: { status: LogStatus }) => {
     switch (status) {
@@ -232,9 +249,9 @@ export function JiraLogger() {
         <CardHeader>
           <CardTitle>Create Worklog</CardTitle>
           <CardDescription>
-            Paste your worklog text below. Use the format:
+            Paste your worklog text below or upload a .txt file. Use the format:
             <code className="ml-2 bg-muted p-1 rounded-sm text-sm">
-              TICKET-123: Did a thing (1h 30m)
+              TICKET-123: Did a thing: 1h 30m
             </code>
           </CardDescription>
         </CardHeader>
@@ -242,11 +259,24 @@ export function JiraLogger() {
           <Textarea
             value={worklogText}
             onChange={(e) => setWorklogText(e.target.value)}
-            placeholder="JIRA-101: Implemented feature X (2h)&#10;JIRA-102: Fixed bug Y (45m)"
-            rows={6}
+            placeholder="16-10-2025 Thursday&#10;    MOL-1099: discussion with Mounir: 1h&#10;    MXT-5573: Madhusheree assisted with using VSCode: 1h 30m"
+            rows={8}
             className="text-base"
           />
-          <Button onClick={handleParse}>Parse Worklog</Button>
+          <div className="flex gap-2">
+            <Button onClick={handleParse}>Parse Worklog</Button>
+            <Button variant="outline" onClick={handleUploadClick}>
+              <FileUp className="mr-2 h-4 w-4" />
+              Upload .txt file
+            </Button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".txt"
+              className="hidden"
+            />
+          </div>
         </CardContent>
 
         {entries.length > 0 && (

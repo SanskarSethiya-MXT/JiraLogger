@@ -18,23 +18,34 @@ const timeStringToMinutes = (timeString: string): number => {
 export const parseWorklog = (text: string): WorklogEntry[] => {
   const entries: WorklogEntry[] = [];
   const lines = text.split("\n");
-  const regex = /^([A-Z][A-Z0-9]+-\d+)\s*:\s*(.+?)\s+\((.+)\)$/;
+  // Regex for jira ticket, description and time.
+  // It will match lines starting with an optional tab/space, then a ticket, a colon, a description, and a time in parentheses or at the end.
+  const regex = /^\s*([A-Z][A-Z0-9]+-\d+)\s*:\s*(.+?)(?:\s+\((.+)\)|:\s*(.+))$/;
 
   lines.forEach((line, index) => {
     const trimmedLine = line.trim();
     if (!trimmedLine) return;
 
-    const match = trimmedLine.match(regex);
+    // Ignore date lines like '16-10-2025 Thursday' or 'Total: 2h'
+    const isDateLine = /^\d{2}-\d{2}-\d{4}/.test(trimmedLine);
+    const isTotalLine = /^Total:/.test(trimmedLine);
+    if(isDateLine || isTotalLine) return;
+
+    const match = line.match(regex);
     if (match) {
-      const [, ticket, description, timeString] = match;
-      const timeSpentInMinutes = timeStringToMinutes(timeString);
-      if (timeSpentInMinutes > 0) {
-        entries.push({
-          id: `${Date.now()}-${index}`,
-          ticket,
-          description: description.trim(),
-          timeSpentInMinutes,
-        });
+      // The time string could be in group 3 or 4
+      const [, ticket, description, timeString1, timeString2] = match;
+      const timeString = timeString1 || timeString2;
+      if (timeString) {
+        const timeSpentInMinutes = timeStringToMinutes(timeString);
+        if (timeSpentInMinutes > 0) {
+          entries.push({
+            id: `${Date.now()}-${index}`,
+            ticket,
+            description: description.trim(),
+            timeSpentInMinutes,
+          });
+        }
       }
     }
   });
