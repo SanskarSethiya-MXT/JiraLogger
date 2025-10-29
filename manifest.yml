@@ -27,7 +27,3 @@ permissions:
     scripts:
       - unsafe-inline
       - unsafe-eval
-  external:
-    fetch:
-      backend:
-        - address: "*.atlassian.net"
