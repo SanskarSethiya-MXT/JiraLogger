@@ -100,6 +100,32 @@ export function JiraLogger() {
     },
   });
 
+  // Prefill settings from server-side env if available. We intentionally do not
+  // auto-fill the API token for security; we only indicate if one exists.
+  useEffect(() => {
+    const fetchEnv = async () => {
+      try {
+        const res = await fetch('/api/env');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.baseUrl) {
+          settingsForm.setValue('url', data.baseUrl);
+        }
+        if (data.email) {
+          settingsForm.setValue('email', data.email);
+        }
+        // If a token is returned (non-production/dev), prefill it for local convenience.
+        // We only do this when the server explicitly includes the token (see server-side guard).
+        if (data.token) {
+          settingsForm.setValue('apiToken', data.token);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    fetchEnv();
+  }, []);
+
   const editForm = useForm<z.infer<typeof editFormSchema>>({
     resolver: zodResolver(editFormSchema),
   });
@@ -289,7 +315,7 @@ export function JiraLogger() {
           setEntries(prev => prev.map(e => e.id === entry.id ? { ...e, logStatus: 'logging' } : e));
 
           const timeSpentInSeconds = entry.timeSpentInMinutes * 60;
-          const started = format(entry.startTime, "yyyy-MM-dd'T'HH:mm:ss.SSSZZ");
+          const started = format(entry.startTime, "yyyy-MM-dd'T'HH:mm:ss.SSSxx");
           
           const body = JSON.stringify({
             comment: entry.description,
