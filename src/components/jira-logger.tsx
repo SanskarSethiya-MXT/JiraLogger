@@ -102,29 +102,43 @@ export function JiraLogger() {
 
   // Prefill settings from server-side env if available. We intentionally do not
   // auto-fill the API token for security; we only indicate if one exists.
-  useEffect(() => {
-    const fetchEnv = async () => {
+    // Load Jira settings from browser localStorage on mount and save them
+    // automatically whenever the settings form changes. This keeps credentials
+    // client-only and allows users to store them locally instead of using .env.
+    useEffect(() => {
       try {
-        const res = await fetch('/api/env');
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.baseUrl) {
-          settingsForm.setValue('url', data.baseUrl);
-        }
-        if (data.email) {
-          settingsForm.setValue('email', data.email);
-        }
-        // If a token is returned (non-production/dev), prefill it for local convenience.
-        // We only do this when the server explicitly includes the token (see server-side guard).
-        if (data.token) {
-          settingsForm.setValue('apiToken', data.token);
+        const saved = localStorage.getItem('jiraSettings');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.url) settingsForm.setValue('url', parsed.url);
+          if (parsed.email) settingsForm.setValue('email', parsed.email);
+          if (parsed.apiToken) settingsForm.setValue('apiToken', parsed.apiToken);
         }
       } catch (e) {
-        // ignore
+        // ignore malformed localStorage
       }
-    };
-    fetchEnv();
-  }, []);
+    }, []);
+
+    // Auto-save settings to localStorage whenever they change.
+    useEffect(() => {
+    const subscription: any = settingsForm.watch((values) => {
+        try {
+          localStorage.setItem('jiraSettings', JSON.stringify(values));
+        } catch (e) {
+          // ignore storage errors (e.g., quota)
+        }
+      });
+
+      return () => {
+        // unsubscribe returned by react-hook-form watch
+        // Some versions return a function directly, others an object with unsubscribe
+        if (typeof subscription === 'function') {
+          try { subscription(); } catch {}
+        } else if (subscription && typeof subscription.unsubscribe === 'function') {
+          try { subscription.unsubscribe(); } catch {}
+        }
+      };
+    }, [settingsForm]);
 
   const editForm = useForm<z.infer<typeof editFormSchema>>({
     resolver: zodResolver(editFormSchema),
