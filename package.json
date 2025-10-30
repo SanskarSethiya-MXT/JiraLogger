@@ -7,6 +7,7 @@
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "NODE_ENV=production next build",
+    "build:extension": "webpack --config webpack.extension.config.js",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
@@ -56,12 +57,21 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/chrome": "^0.0.268",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "copy-webpack-plugin": "^12.0.2",
+    "css-loader": "^6.10.0",
     "genkit-cli": "^1.20.0",
+    "html-webpack-plugin": "^5.6.0",
+    "mini-css-extract-plugin": "^2.8.1",
     "postcss": "^8",
+    "postcss-loader": "^8.1.1",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "ts-loader": "^9.5.1",
+    "typescript": "^5",
+    "webpack": "^5.90.3",
+    "webpack-cli": "^5.1.4"
   }
 }

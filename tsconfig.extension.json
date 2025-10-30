@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "noEmit": false,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": [
+    "src/popup.tsx",
+    "src/components/jira-logger-extension.tsx",
+    "src/components/header.tsx",
+    "src/components/icons.tsx",
+    "src/lib/jira-api.ts",
+    "src/lib/parser.ts",
+    "src/lib/utils.ts",
+    "src/types/*.ts",
+    "src/hooks/*.ts",
+    "src/components/ui/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "src/ai",
+    "src/app",
+    "src/components/jira-logger.tsx",
+    "src/components/ticket-suggester.tsx",
+    "vite.config.extension.ts",
+    "**/*.test.ts",
+    "**/*.test.tsx"
+  ]
+}
