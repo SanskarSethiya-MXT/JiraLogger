@@ -600,7 +600,7 @@ export function JiraLoggerExtension() {
   const isSettingsEmpty = !settingsForm.watch('url') && !settingsForm.watch('email') && !settingsForm.watch('apiToken');
 
   return (
-    <div className="min-h-screen p-4" style={{ width: '800px', minHeight: '600px' }}>
+    <div className="min-h-screen w-full p-8 mx-auto max-w-7xl">
       <Card>
         <Accordion type="single" collapsible className="w-full" defaultValue={isSettingsEmpty ? "item-1" : undefined}>
             <AccordionItem value="item-1">

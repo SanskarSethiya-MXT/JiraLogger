@@ -1,1 +1,1 @@
-chrome.action.onClicked.addListener(()=>{chrome.windows.create({url:"popup.html",type:"popup",width:850,height:700,focused:!0})});
+chrome.action.onClicked.addListener(()=>{chrome.tabs.create({url:"popup.html"})});
